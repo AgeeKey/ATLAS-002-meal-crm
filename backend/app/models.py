@@ -186,6 +186,7 @@ class PackagePublic(PackageBase):
     deliveries_count: int = 0
     freeze_days: int = 0
     extension_days: int = 0
+    extension_added_price: int = 0
     days_used: int = 0
     days_remaining: int = 0
     debt: int = 0
@@ -265,6 +266,7 @@ class DeliveryPublic(DeliveryBase):
 
 class ExtensionBase(SQLModel):
     extra_days: int = Field(ge=1)
+    added_price: int = Field(default=0, ge=0)
     date: date
     reason: str | None = Field(default=None, max_length=255)
 

@@ -105,10 +105,26 @@ const paymentFormSchema = z.object({
   date: z.string().min(1, { message: "Date is required" }),
   comment: z.string().trim().optional(),
 })
-const deliveryFormSchema = z.object({
-  scheduled_date: z.string().min(1, { message: "Meal date is required" }),
-  sent_date: z.string().min(1, { message: "Send date is required" }),
-})
+const deliveryFormSchema = z
+  .object({
+    scheduled_date: z.string().min(1, { message: "Meal date is required" }),
+    sent_date: z.string().min(1, { message: "Send date is required" }),
+  })
+  .refine(
+    (value) => {
+      if (!value.scheduled_date || !value.sent_date) return true
+      const meal = new Date(value.scheduled_date)
+      const send = new Date(value.sent_date)
+      const diff = Math.round(
+        (meal.getTime() - send.getTime()) / MS_PER_DAY,
+      )
+      return diff === 1
+    },
+    {
+      message: "Send date (package day) must be exactly one day before meal date",
+      path: ["sent_date"],
+    },
+  )
 const freezeFormSchema = z
   .object({
     start_date: z.string().min(1, { message: "Start date is required" }),
@@ -124,6 +140,10 @@ const extensionFormSchema = z.object({
     .number()
     .int()
     .min(1, { message: "Extra days must be at least 1" }),
+  added_price: z
+    .number()
+    .int()
+    .min(0, { message: "Added price must be 0 or more" }),
   date: z.string().min(1, { message: "Date is required" }),
   reason: z.string().trim().optional(),
 })
@@ -729,6 +749,7 @@ function PackageCard({
   const [isExpanded, setIsExpanded] = useState(false)
 
   const effectiveDays = pkg.total_days + pkg.extension_days
+  const totalObligation = pkg.price + pkg.extension_added_price
   return (
     <Card>
       <CardHeader className="gap-4">
@@ -761,8 +782,18 @@ function PackageCard({
                 value={pkg.days_remaining.toString()}
               />
               <SummaryLine
-                label="Price"
+                label="Base price"
                 value={currencyFormatter.format(pkg.price)}
+              />
+              {pkg.extension_added_price > 0 ? (
+                <SummaryLine
+                  label="Extension price"
+                  value={currencyFormatter.format(pkg.extension_added_price)}
+                />
+              ) : null}
+              <SummaryLine
+                label="Total obligation"
+                value={currencyFormatter.format(totalObligation)}
               />
               <SummaryLine
                 label="Paid"
@@ -923,6 +954,11 @@ function PackageCard({
                       +{extension.extra_days} days on{" "}
                       {formatDate(extension.date)}
                     </div>
+                    {extension.added_price > 0 ? (
+                      <div className="text-muted-foreground mt-1">
+                        Added price: {currencyFormatter.format(extension.added_price)}
+                      </div>
+                    ) : null}
                     {extension.reason ? (
                       <div className="text-muted-foreground mt-1 whitespace-pre-wrap">
                         {extension.reason}
@@ -1339,6 +1375,7 @@ function AddExtensionDialog({
     mode: "onBlur",
     defaultValues: {
       extra_days: 1,
+      added_price: 0,
       date: getToday(),
       reason: "",
     },
@@ -1349,6 +1386,7 @@ function AddExtensionDialog({
       PackagesService.createExtension({
         body: {
           extra_days: data.extra_days,
+          added_price: data.added_price,
           date: data.date,
           reason: normalizeOptionalText(data.reason),
         },
@@ -1356,7 +1394,7 @@ function AddExtensionDialog({
       }),
     onSuccess: () => {
       showSuccessToast("Extension created successfully")
-      form.reset({ extra_days: 1, date: getToday(), reason: "" })
+      form.reset({ extra_days: 1, added_price: 0, date: getToday(), reason: "" })
       setIsOpen(false)
     },
     onError: handleError.bind(showErrorToast),
@@ -1377,7 +1415,7 @@ function AddExtensionDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Extension</DialogTitle>
-          <DialogDescription>Add extra days to the package.</DialogDescription>
+          <DialogDescription>Add extra days and record any additional price to the package.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -1395,6 +1433,26 @@ function AddExtensionDialog({
                       <Input
                         type="number"
                         min={1}
+                        value={field.value}
+                        onChange={(event) =>
+                          field.onChange(event.target.valueAsNumber)
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="added_price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Added price</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
                         value={field.value}
                         onChange={(event) =>
                           field.onChange(event.target.valueAsNumber)

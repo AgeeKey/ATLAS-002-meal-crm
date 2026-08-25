@@ -1023,6 +1023,7 @@ export type CrmPackagePublic = {
     deliveries_count: number;
     freeze_days: number;
     extension_days: number;
+    extension_added_price: number;
     days_used: number;
     days_remaining: number;
     debt: number;
@@ -1081,6 +1082,7 @@ export type CrmDeliveryPublic = {
 
 export type CrmExtensionCreate = {
     extra_days: number;
+    added_price?: number;
     date: string;
     reason?: string | null;
 };
@@ -1089,6 +1091,7 @@ export type CrmExtensionPublic = {
     id: string;
     package_id: string;
     extra_days: number;
+    added_price: number;
     date: string;
     reason?: string | null;
 };
