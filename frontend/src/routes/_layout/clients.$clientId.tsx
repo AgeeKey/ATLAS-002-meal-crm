@@ -108,7 +108,7 @@ const paymentFormSchema = z.object({
 const deliveryFormSchema = z
   .object({
     scheduled_date: z.string().min(1, { message: "Meal date is required" }),
-    sent_date: z.string().min(1, { message: "Send date is required" }),
+    sent_date: z.string().min(1, { message: "Send / package day is required" }),
   })
   .refine(
     (value) => {
@@ -121,7 +121,7 @@ const deliveryFormSchema = z
       return diff === 1
     },
     {
-      message: "Send date (package day) must be exactly one day before meal date",
+      message: "Send / package day must be exactly one day before meal date",
       path: ["sent_date"],
     },
   )
@@ -885,7 +885,7 @@ function PackageCard({
                       Meal date: {formatDate(delivery.scheduled_date)}
                     </div>
                     <div className="text-muted-foreground mt-1">
-                      Send date: {formatDate(delivery.sent_date)}
+                      Send / package day: {formatDate(delivery.sent_date)}
                     </div>
                   </div>
                 ))}
@@ -1193,7 +1193,7 @@ function AddDeliveryDialog({
         <DialogHeader>
           <DialogTitle>Add Delivery</DialogTitle>
           <DialogDescription>
-            Track the meal date and the day the package was sent.
+            Track the meal date and the send / package day that consumes package allowance.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -1219,7 +1219,7 @@ function AddDeliveryDialog({
               name="sent_date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Send date</FormLabel>
+                  <FormLabel>Send / package day</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
                   </FormControl>

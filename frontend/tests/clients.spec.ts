@@ -160,7 +160,7 @@ test("Delivery is persisted after page reload", async ({ page }) => {
   // Add a delivery
   await page.getByRole("button", { name: "Add Delivery" }).click()
   await page.getByLabel("Meal date").fill(TODAY)
-  await page.getByLabel("Send date").fill(YESTERDAY)
+  await page.getByLabel("Send / package day").fill(YESTERDAY)
   await page.getByRole("button", { name: "Save Delivery" }).click()
   await expect(page.getByText("Delivery created successfully")).toBeVisible()
 
@@ -202,12 +202,12 @@ test("Freeze is persisted after page reload", async ({ page }) => {
   await expect(page.getByText("Freeze created successfully")).toBeVisible()
 
   // Verify freeze days appear in the summary
-  await expect(page.getByText("Frozen days:")).toBeVisible()
+  await expect(page.getByText("Frozen days: 2")).toBeVisible()
 
   // Reload and verify persistence
   await page.reload()
   await page.getByRole("button", { name: "Show Details" }).first().click()
-  await expect(page.getByText("Frozen days:")).toBeVisible()
+  await expect(page.getByText("Frozen days: 2")).toBeVisible()
 })
 
 // ─── extension history (persistent after reload) ──────────────────────────────
@@ -228,17 +228,20 @@ test("Extension is persisted after page reload", async ({ page }) => {
 
   await page.getByRole("button", { name: "Add Extension" }).click()
   await page.getByLabel("Extra days").fill("5")
+  await page.getByLabel("Added price").fill("1900")
   await page.getByLabel("Date").fill(TODAY)
   await page.getByRole("button", { name: "Save Extension" }).click()
   await expect(page.getByText("Extension created successfully")).toBeVisible()
 
-  // Verify "+5 days" appears
+  // Verify the extension history shows the added days and price
   await expect(page.getByText("+5 days on")).toBeVisible()
+  await expect(page.getByText("Added price: 1,900")).toBeVisible()
 
   // Reload and verify persistence
   await page.reload()
   await page.getByRole("button", { name: "Show Details" }).first().click()
   await expect(page.getByText("+5 days on")).toBeVisible()
+  await expect(page.getByText("Added price: 1,900")).toBeVisible()
 })
 
 // ─── partial payments / debt ──────────────────────────────────────────────────
@@ -383,11 +386,11 @@ test("Delivery form auto-sets send date to one day before meal date", async ({
   await page.getByRole("button", { name: "Add Delivery" }).click()
   // Check labels exist
   await expect(page.getByLabel("Meal date")).toBeVisible()
-  await expect(page.getByLabel("Send date")).toBeVisible()
+  await expect(page.getByLabel("Send / package day")).toBeVisible()
 
   // When meal date is set, send date should be automatically populated as day before
   await page.getByLabel("Meal date").fill(TODAY)
-  const sendDateValue = await page.getByLabel("Send date").inputValue()
+  const sendDateValue = await page.getByLabel("Send / package day").inputValue()
   expect(sendDateValue).toBe(YESTERDAY)
 })
 
@@ -411,7 +414,7 @@ test("Completed package cannot have new deliveries added", async ({ page }) => {
   // Add the single allowed delivery
   await page.getByRole("button", { name: "Add Delivery" }).click()
   await page.getByLabel("Meal date").fill(TODAY)
-  await page.getByLabel("Send date").fill(YESTERDAY)
+  await page.getByLabel("Send / package day").fill(YESTERDAY)
   await page.getByRole("button", { name: "Save Delivery" }).click()
   await expect(page.getByText("Delivery created successfully")).toBeVisible()
 
@@ -428,7 +431,7 @@ test("Completed package cannot have new deliveries added", async ({ page }) => {
     .slice(0, 10)
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
   await page.getByLabel("Meal date").fill(dayAfterTomorrow)
-  await page.getByLabel("Send date").fill(tomorrow)
+  await page.getByLabel("Send / package day").fill(tomorrow)
   await page.getByRole("button", { name: "Save Delivery" }).click()
   // API rejects the request; dialog should remain open (no success toast)
   await expect(page.getByText("Delivery created successfully")).not.toBeVisible({ timeout: 3000 })
@@ -495,4 +498,58 @@ test("Three partial payments equal to full price result in zero debt", async ({
 
   // Debt should be 0
   await expect(page.getByText(/Debt.*0/).first()).toBeVisible()
+})
+
+test("Client notes persist after page reload", async ({ page }) => {
+  const clientName = randomClientName()
+  const noteText = `Note ${Math.random().toString(36).slice(2, 8)}`
+
+  await createClient(page, clientName, randomPhone())
+  await openClientDetail(page, clientName)
+
+  await page.getByRole("tab", { name: "Notes" }).click()
+  await page.getByLabel("Add Note").fill(noteText)
+  await page.getByRole("button", { name: "Save Note" }).click()
+  await expect(page.getByText("Note created successfully")).toBeVisible()
+  await expect(page.getByText(noteText)).toBeVisible()
+
+  await page.reload()
+  await page.getByRole("tab", { name: "Notes" }).click()
+  await expect(page.getByText(noteText)).toBeVisible()
+})
+
+test("Dashboard today's deliveries count increases after adding today's delivery", async ({
+  page,
+}) => {
+  const clientName = randomClientName()
+  await page.goto("/")
+
+  const dashboardCard = page.locator("text=Today's deliveries").locator("..")
+  const initialCount = Number(
+    await dashboardCard.locator(".text-3xl").first().textContent(),
+  )
+
+  await createClient(page, clientName, randomPhone())
+  await openClientDetail(page, clientName)
+
+  await page.getByRole("button", { name: "Add Package" }).click()
+  await page.getByLabel("Total days").fill("10")
+  await page.getByLabel("Price").fill("5000")
+  await page.getByLabel("Start date").fill(TODAY)
+  await page.getByRole("button", { name: "Save Package" }).click()
+  await expect(page.getByText("Package created successfully")).toBeVisible()
+
+  await page.getByRole("button", { name: "Show Details" }).first().click()
+  await page.getByRole("button", { name: "Add Delivery" }).click()
+  await page.getByLabel("Meal date").fill(TODAY)
+  await page.getByLabel("Send / package day").fill(YESTERDAY)
+  await page.getByRole("button", { name: "Save Delivery" }).click()
+  await expect(page.getByText("Delivery created successfully")).toBeVisible()
+
+  await page.goto("/")
+  await expect(page.getByText("Today's deliveries")).toBeVisible()
+  const updatedCount = Number(
+    await dashboardCard.locator(".text-3xl").first().textContent(),
+  )
+  expect(updatedCount).toBe(initialCount + 1)
 })

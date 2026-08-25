@@ -86,11 +86,11 @@ def test_meal_crm_mvp_flow(client: TestClient, superuser_token_headers: dict[str
     )
     assert response.status_code == 200
     package_details = response.json()
-    assert package_details["deliveries_count"] == 1
-    assert package_details["days_used"] == 1
+    assert package_details["deliveries_count"] == 2
+    assert package_details["days_used"] == 2
     assert package_details["extension_days"] == 2
     assert package_details["freeze_days"] == 2
-    assert package_details["days_remaining"] == 6
+    assert package_details["days_remaining"] == 5
     assert package_details["paid_amount"] == 15000
     assert package_details["debt"] == 15000
 
@@ -424,6 +424,40 @@ def test_delivery_sent_date_must_be_day_before_meal_date(
     assert ok2.json()["sent_date"] == "2026-06-05"
 
 
+def test_delivery_usage_counts_send_day_not_meal_day(
+    client, superuser_token_headers
+) -> None:
+    """Package usage is counted from sent_date (package day), not meal-date naming."""
+    client_id = _create_test_client(client, superuser_token_headers, "Bermet", "+996700000031")
+    package_id = _create_test_package(client, superuser_token_headers, client_id, total_days=10, price=11000)
+
+    response = client.post(
+        f"{settings.API_V1_STR}/packages/{package_id}/deliveries",
+        headers=superuser_token_headers,
+        json={"scheduled_date": "2026-06-10", "sent_date": "2026-06-09"},
+    )
+    assert response.status_code == 200
+
+    package_response = client.get(
+        f"{settings.API_V1_STR}/packages/{package_id}",
+        headers=superuser_token_headers,
+    )
+    assert package_response.status_code == 200
+    package_data = package_response.json()
+    assert package_data["deliveries_count"] == 1
+    assert package_data["days_used"] == 1
+    assert package_data["days_remaining"] == 9
+
+    client_response = client.get(
+        f"{settings.API_V1_STR}/clients/{client_id}",
+        headers=superuser_token_headers,
+    )
+    assert client_response.status_code == 200
+    delivery = client_response.json()["packages"][0]["deliveries"][0]
+    assert delivery["scheduled_date"] == "2026-06-10"
+    assert delivery["sent_date"] == "2026-06-09"
+
+
 def test_delivery_no_duplicate_sent_date(
     client, superuser_token_headers
 ) -> None:
@@ -498,11 +532,48 @@ def test_freeze_overlap_rejected(
     assert r3.status_code == 200
 
 
+def test_freeze_preserves_remaining_service_allowance(
+    client, superuser_token_headers
+) -> None:
+    """A 10-day package with a 2-day freeze and 2 deliveries still has 8 service days remaining."""
+    client_id = _create_test_client(client, superuser_token_headers, "Elina", "+996700000035")
+    package_id = _create_test_package(client, superuser_token_headers, client_id, total_days=10, price=9000)
+
+    freeze_response = client.post(
+        f"{settings.API_V1_STR}/packages/{package_id}/freezes",
+        headers=superuser_token_headers,
+        json={"start_date": "2026-06-04", "end_date": "2026-06-05", "reason": "travel"},
+    )
+    assert freeze_response.status_code == 200
+
+    for scheduled_date, sent_date in [
+        ("2026-06-02", "2026-06-01"),
+        ("2026-06-03", "2026-06-02"),
+    ]:
+        delivery_response = client.post(
+            f"{settings.API_V1_STR}/packages/{package_id}/deliveries",
+            headers=superuser_token_headers,
+            json={"scheduled_date": scheduled_date, "sent_date": sent_date},
+        )
+        assert delivery_response.status_code == 200
+
+    package_response = client.get(
+        f"{settings.API_V1_STR}/packages/{package_id}",
+        headers=superuser_token_headers,
+    )
+    assert package_response.status_code == 200
+    package_data = package_response.json()
+    assert package_data["freeze_days"] == 2
+    assert package_data["days_used"] == 2
+    assert package_data["days_remaining"] == 8
+    assert package_data["end_date"] == "2026-06-12"
+
+
 def test_package_status_cannot_be_manually_completed_with_remaining_days(
     client, superuser_token_headers
 ) -> None:
     """PATCH /packages/{id} must reject status=completed when days_remaining > 0."""
-    client_id = _create_test_client(client, superuser_token_headers, "Farida", "+996700000035")
+    client_id = _create_test_client(client, superuser_token_headers, "Farida", "+996700000036")
     package_id = _create_test_package(client, superuser_token_headers, client_id, total_days=5, price=5000)
 
     bad = client.patch(
@@ -525,7 +596,7 @@ def test_completed_package_rejects_new_delivery(
     client, superuser_token_headers
 ) -> None:
     """A package that reached days_remaining=0 (auto-completed) blocks further deliveries."""
-    client_id = _create_test_client(client, superuser_token_headers, "Gulnara", "+996700000036")
+    client_id = _create_test_client(client, superuser_token_headers, "Gulnara", "+996700000037")
     package_id = _create_test_package(client, superuser_token_headers, client_id, total_days=1, price=1000)
 
     # Consume the only day
