@@ -12,11 +12,20 @@ from app.models import (
     ClientPublic,
     ClientsPublic,
     ClientUpdate,
+    Delivery,
+    DeliveryPublic,
+    Extension,
+    ExtensionPublic,
+    Freeze,
+    FreezePublic,
     Note,
     NoteCreate,
     NotePublic,
     Package,
+    PackageDetail,
     PackagePublic,
+    Payment,
+    PaymentPublic,
 )
 from app.services.package_metrics import calculate_package_metrics
 
@@ -68,16 +77,31 @@ def read_client(session: SessionDep, current_user: CurrentUser, id: uuid.UUID) -
         raise HTTPException(status_code=404, detail="Client not found")
 
     packages = session.exec(select(Package).where(Package.client_id == client.id)).all()
-    packages_public: list[PackagePublic] = []
+    packages_detail: list[PackageDetail] = []
     for package in packages:
         metrics = calculate_package_metrics(package)
-        packages_public.append(PackagePublic.model_validate(package, update=metrics))
+        deliveries = session.exec(select(Delivery).where(Delivery.package_id == package.id)).all()
+        freezes = session.exec(select(Freeze).where(Freeze.package_id == package.id)).all()
+        extensions = session.exec(select(Extension).where(Extension.package_id == package.id)).all()
+        payments = session.exec(select(Payment).where(Payment.package_id == package.id)).all()
+        packages_detail.append(
+            PackageDetail.model_validate(
+                package,
+                update={
+                    **metrics,
+                    "deliveries": [DeliveryPublic.model_validate(d) for d in deliveries],
+                    "freezes": [FreezePublic.model_validate(f) for f in freezes],
+                    "extensions": [ExtensionPublic.model_validate(e) for e in extensions],
+                    "payments": [PaymentPublic.model_validate(p) for p in payments],
+                },
+            )
+        )
 
     notes = session.exec(select(Note).where(Note.client_id == client.id)).all()
     return ClientDetail.model_validate(
         client,
         update={
-            "packages": packages_public,
+            "packages": packages_detail,
             "client_notes": [NotePublic.model_validate(note) for note in notes],
         },
     )

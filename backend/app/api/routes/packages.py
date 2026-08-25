@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -7,15 +8,19 @@ from sqlmodel import col, func, select
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     Client,
+    DailyDeliveryCount,
     Delivery,
+    DeliveriesPublic,
     DeliveryCreate,
     DeliveryPublic,
     Extension,
     ExtensionCreate,
     ExtensionPublic,
+    ExtensionsPublic,
     Freeze,
     FreezeCreate,
     FreezePublic,
+    FreezesPublic,
     Package,
     PackageCreate,
     PackagePublic,
@@ -55,6 +60,18 @@ def create_package(
     session.commit()
     session.refresh(package)
     return PackagePublic.model_validate(package, update=metrics)
+
+
+@router.get("/deliveries/today", response_model=DailyDeliveryCount)
+def get_todays_delivery_count(
+    session: SessionDep, current_user: CurrentUser
+) -> Any:
+    del current_user
+    today = date.today()
+    count = session.exec(
+        select(func.count()).select_from(Delivery).where(Delivery.scheduled_date == today)
+    ).one()
+    return DailyDeliveryCount(date=today, count=count)
 
 
 @router.get("/", response_model=PackagesPublic)
@@ -187,4 +204,55 @@ def read_package_payments(
     return PaymentsPublic(
         data=[PaymentPublic.model_validate(payment) for payment in payments],
         count=len(payments),
+    )
+
+
+@router.get("/{id}/deliveries", response_model=DeliveriesPublic)
+def read_package_deliveries(
+    session: SessionDep, current_user: CurrentUser, id: uuid.UUID
+) -> Any:
+    del current_user
+    package = get_package_or_404(session, id)
+    deliveries = session.exec(
+        select(Delivery)
+        .where(Delivery.package_id == package.id)
+        .order_by(col(Delivery.scheduled_date).desc())
+    ).all()
+    return DeliveriesPublic(
+        data=[DeliveryPublic.model_validate(d) for d in deliveries],
+        count=len(deliveries),
+    )
+
+
+@router.get("/{id}/freezes", response_model=FreezesPublic)
+def read_package_freezes(
+    session: SessionDep, current_user: CurrentUser, id: uuid.UUID
+) -> Any:
+    del current_user
+    package = get_package_or_404(session, id)
+    freezes = session.exec(
+        select(Freeze)
+        .where(Freeze.package_id == package.id)
+        .order_by(col(Freeze.start_date).desc())
+    ).all()
+    return FreezesPublic(
+        data=[FreezePublic.model_validate(f) for f in freezes],
+        count=len(freezes),
+    )
+
+
+@router.get("/{id}/extensions", response_model=ExtensionsPublic)
+def read_package_extensions(
+    session: SessionDep, current_user: CurrentUser, id: uuid.UUID
+) -> Any:
+    del current_user
+    package = get_package_or_404(session, id)
+    extensions = session.exec(
+        select(Extension)
+        .where(Extension.package_id == package.id)
+        .order_by(col(Extension.date).desc())
+    ).all()
+    return ExtensionsPublic(
+        data=[ExtensionPublic.model_validate(e) for e in extensions],
+        count=len(extensions),
     )

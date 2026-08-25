@@ -38,6 +38,14 @@ function getActivePackagesQueryOptions() {
   }
 }
 
+function getTodaysDeliveryCountQueryOptions() {
+  return {
+    queryFn: async () =>
+      (await PackagesService.getTodaysDeliveryCount()).data,
+    queryKey: ["deliveries", "today"],
+  }
+}
+
 export const Route = createFileRoute("/_layout/")({
   component: Dashboard,
   head: () => ({
@@ -54,6 +62,9 @@ function DashboardContent() {
   const { data: clientsResponse } = useSuspenseQuery(getClientsQueryOptions())
   const { data: packagesResponse } = useSuspenseQuery(
     getActivePackagesQueryOptions(),
+  )
+  const { data: todaysDeliveryData } = useSuspenseQuery(
+    getTodaysDeliveryCountQueryOptions(),
   )
 
   const stats = useMemo(() => {
@@ -95,9 +106,9 @@ function DashboardContent() {
       packagesEndingSoon,
       debtClients: debtClientIds.size,
       totalDebt,
-      todaysDeliveriesProxy: activePackages.length,
+      todaysDeliveries: todaysDeliveryData.count,
     }
-  }, [clientsResponse.data, packagesResponse.data])
+  }, [clientsResponse.data, packagesResponse.data, todaysDeliveryData])
 
   return (
     <div className="flex flex-col gap-6">
@@ -154,11 +165,10 @@ function DashboardContent() {
             description="Outstanding amount across active packages"
             icon={<AlertCircle className="size-4" />}
           />
-          {/* TODO: Replace this proxy metric when a delivery summary endpoint is available. */}
           <StatCard
             title="Today's deliveries"
-            value={stats.todaysDeliveriesProxy.toString()}
-            description="Using active package count until delivery summary is available"
+            value={stats.todaysDeliveries.toString()}
+            description="Meal packages scheduled for delivery today"
             icon={<Package2 className="size-4" />}
           />
         </div>

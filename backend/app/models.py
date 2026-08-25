@@ -308,8 +308,35 @@ class NotePublic(NoteBase):
     created_at: datetime
 
 
+class DailyDeliveryCount(SQLModel):
+    date: date
+    count: int
+
+
+class DeliveriesPublic(SQLModel):
+    data: list[DeliveryPublic]
+    count: int
+
+
+class FreezesPublic(SQLModel):
+    data: list[FreezePublic]
+    count: int
+
+
+class ExtensionsPublic(SQLModel):
+    data: list[ExtensionPublic]
+    count: int
+
+
+class PackageDetail(PackagePublic):
+    deliveries: list[DeliveryPublic] = []
+    freezes: list[FreezePublic] = []
+    extensions: list[ExtensionPublic] = []
+    payments: list[PaymentPublic] = []
+
+
 class ClientDetail(ClientPublic):
-    packages: list[PackagePublic] = []
+    packages: list[PackageDetail] = []
     client_notes: list[NotePublic] = []
 
 

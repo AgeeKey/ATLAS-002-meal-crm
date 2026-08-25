@@ -1,7 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   useMutation,
-  useQuery,
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query"
@@ -24,12 +23,9 @@ import {
   type ClientStatus,
   ClientsService,
   type CrmClientUpdate,
-  type CrmDeliveryPublic,
-  type CrmExtensionPublic,
-  type CrmFreezePublic,
   type CrmNoteCreate,
   type CrmPackageCreate,
-  type CrmPackagePublic,
+  type CrmPackageDetail,
   type CrmPackageUpdate,
   type PackageStatus,
   PackagesService,
@@ -217,15 +213,6 @@ function getClientQueryOptions(clientId: string) {
   }
 }
 
-function getPackagePaymentsQueryOptions(packageId: string) {
-  return {
-    queryFn: async () =>
-      (await PackagesService.readPackagePayments({ path: { id: packageId } }))
-        .data,
-    queryKey: ["packages", "payments", packageId],
-  }
-}
-
 export const Route = createFileRoute("/_layout/clients/$clientId")({
   component: ClientDetailPage,
   head: () => ({
@@ -240,15 +227,6 @@ export const Route = createFileRoute("/_layout/clients/$clientId")({
 function ClientDetailPageContent() {
   const { clientId } = Route.useParams()
   const { data: client } = useSuspenseQuery(getClientQueryOptions(clientId))
-  const [sessionDeliveries, setSessionDeliveries] = useState<
-    Record<string, CrmDeliveryPublic[]>
-  >({})
-  const [sessionFreezes, setSessionFreezes] = useState<
-    Record<string, CrmFreezePublic[]>
-  >({})
-  const [sessionExtensions, setSessionExtensions] = useState<
-    Record<string, CrmExtensionPublic[]>
-  >({})
 
   const packagesWithDebt = useMemo(
     () => client.packages.filter((pkg) => pkg.debt > 0),
@@ -330,27 +308,6 @@ function ClientDetailPageContent() {
                 <PackageCard
                   key={pkg.id}
                   package={pkg}
-                  sessionDeliveries={sessionDeliveries[pkg.id] ?? []}
-                  sessionExtensions={sessionExtensions[pkg.id] ?? []}
-                  sessionFreezes={sessionFreezes[pkg.id] ?? []}
-                  onDeliveryCreated={(delivery) => {
-                    setSessionDeliveries((current) => ({
-                      ...current,
-                      [pkg.id]: [...(current[pkg.id] ?? []), delivery],
-                    }))
-                  }}
-                  onFreezeCreated={(freeze) => {
-                    setSessionFreezes((current) => ({
-                      ...current,
-                      [pkg.id]: [...(current[pkg.id] ?? []), freeze],
-                    }))
-                  }}
-                  onExtensionCreated={(extension) => {
-                    setSessionExtensions((current) => ({
-                      ...current,
-                      [pkg.id]: [...(current[pkg.id] ?? []), extension],
-                    }))
-                  }}
                 />
               ))}
             </div>
@@ -766,26 +723,10 @@ function AddPackageDialog({ clientId }: { clientId: string }) {
 
 function PackageCard({
   package: pkg,
-  sessionDeliveries,
-  sessionFreezes,
-  sessionExtensions,
-  onDeliveryCreated,
-  onFreezeCreated,
-  onExtensionCreated,
 }: {
-  package: CrmPackagePublic
-  sessionDeliveries: CrmDeliveryPublic[]
-  sessionFreezes: CrmFreezePublic[]
-  sessionExtensions: CrmExtensionPublic[]
-  onDeliveryCreated: (delivery: CrmDeliveryPublic) => void
-  onFreezeCreated: (freeze: CrmFreezePublic) => void
-  onExtensionCreated: (extension: CrmExtensionPublic) => void
+  package: CrmPackageDetail
 }) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const paymentsQuery = useQuery({
-    ...getPackagePaymentsQueryOptions(pkg.id),
-    enabled: isExpanded,
-  })
 
   const effectiveDays = pkg.total_days + pkg.extension_days
   return (
@@ -868,11 +809,9 @@ function PackageCard({
             title="Payments"
             action={<AddPaymentDialog packageId={pkg.id} />}
           >
-            {paymentsQuery.isLoading ? (
-              <p className="text-muted-foreground text-sm">Loading payments…</p>
-            ) : paymentsQuery.data && paymentsQuery.data.data.length > 0 ? (
+            {pkg.payments.length > 0 ? (
               <div className="space-y-3">
-                {paymentsQuery.data.data.map((payment) => (
+                {pkg.payments.map((payment) => (
                   <div
                     key={payment.id}
                     className="rounded-lg border p-3 text-sm"
@@ -902,20 +841,11 @@ function PackageCard({
 
           <SectionCard
             title="Deliveries"
-            action={
-              <AddDeliveryDialog
-                packageId={pkg.id}
-                onCreated={onDeliveryCreated}
-              />
-            }
+            action={<AddDeliveryDialog packageId={pkg.id} />}
           >
-            <p className="text-muted-foreground text-sm">
-              Total recorded deliveries: {pkg.deliveries_count}. Newly created
-              deliveries in this session are listed below.
-            </p>
-            {sessionDeliveries.length > 0 ? (
+            {pkg.deliveries.length > 0 ? (
               <div className="space-y-3">
-                {sessionDeliveries.map((delivery) => (
+                {pkg.deliveries.map((delivery) => (
                   <div
                     key={delivery.id}
                     className="rounded-lg border p-3 text-sm"
@@ -931,23 +861,18 @@ function PackageCard({
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">
-                No delivery entries added in this session yet.
+                No deliveries recorded yet.
               </p>
             )}
           </SectionCard>
 
           <SectionCard
             title="Freezes"
-            action={
-              <AddFreezeDialog packageId={pkg.id} onCreated={onFreezeCreated} />
-            }
+            action={<AddFreezeDialog packageId={pkg.id} />}
           >
-            <p className="text-muted-foreground text-sm">
-              Frozen days tracked by the backend: {pkg.freeze_days}.
-            </p>
-            {sessionFreezes.length > 0 ? (
+            {pkg.freezes.length > 0 ? (
               <div className="space-y-3">
-                {sessionFreezes.map((freeze) => {
+                {pkg.freezes.map((freeze) => {
                   const frozenDays =
                     Math.floor(
                       (new Date(freeze.end_date).getTime() -
@@ -978,26 +903,18 @@ function PackageCard({
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">
-                No freeze entries added in this session yet.
+                No freeze entries recorded yet.
               </p>
             )}
           </SectionCard>
 
           <SectionCard
             title="Extensions"
-            action={
-              <AddExtensionDialog
-                packageId={pkg.id}
-                onCreated={onExtensionCreated}
-              />
-            }
+            action={<AddExtensionDialog packageId={pkg.id} />}
           >
-            <p className="text-muted-foreground text-sm">
-              Total extension days tracked by the backend: {pkg.extension_days}.
-            </p>
-            {sessionExtensions.length > 0 ? (
+            {pkg.extensions.length > 0 ? (
               <div className="space-y-3">
-                {sessionExtensions.map((extension) => (
+                {pkg.extensions.map((extension) => (
                   <div
                     key={extension.id}
                     className="rounded-lg border p-3 text-sm"
@@ -1016,7 +933,7 @@ function PackageCard({
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">
-                No extension entries added in this session yet.
+                No extension entries recorded yet.
               </p>
             )}
           </SectionCard>
@@ -1179,10 +1096,8 @@ function AddPaymentDialog({ packageId }: { packageId: string }) {
 
 function AddDeliveryDialog({
   packageId,
-  onCreated,
 }: {
   packageId: string
-  onCreated: (delivery: CrmDeliveryPublic) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
@@ -1215,9 +1130,8 @@ function AddDeliveryDialog({
         },
         path: { id: packageId },
       }),
-    onSuccess: ({ data }) => {
+    onSuccess: () => {
       showSuccessToast("Delivery created successfully")
-      onCreated(data)
       form.reset({
         scheduled_date: getToday(),
         sent_date: shiftDate(getToday(), -1),
@@ -1296,10 +1210,8 @@ function AddDeliveryDialog({
 
 function AddFreezeDialog({
   packageId,
-  onCreated,
 }: {
   packageId: string
-  onCreated: (freeze: CrmFreezePublic) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
@@ -1324,9 +1236,8 @@ function AddFreezeDialog({
         },
         path: { id: packageId },
       }),
-    onSuccess: ({ data }) => {
+    onSuccess: () => {
       showSuccessToast("Freeze created successfully")
-      onCreated(data)
       form.reset({ start_date: getToday(), end_date: getToday(), reason: "" })
       setIsOpen(false)
     },
@@ -1417,10 +1328,8 @@ function AddFreezeDialog({
 
 function AddExtensionDialog({
   packageId,
-  onCreated,
 }: {
   packageId: string
-  onCreated: (extension: CrmExtensionPublic) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
@@ -1445,9 +1354,8 @@ function AddExtensionDialog({
         },
         path: { id: packageId },
       }),
-    onSuccess: ({ data }) => {
+    onSuccess: () => {
       showSuccessToast("Extension created successfully")
-      onCreated(data)
       form.reset({ extra_days: 1, date: getToday(), reason: "" })
       setIsOpen(false)
     },

@@ -1104,7 +1104,34 @@ export type CrmNotePublic = {
     created_at: string;
 };
 
+export type CrmDailyDeliveryCount = {
+    date: string;
+    count: number;
+};
+
+export type CrmDeliveriesPublic = {
+    data: Array<CrmDeliveryPublic>;
+    count: number;
+};
+
+export type CrmFreezesPublic = {
+    data: Array<CrmFreezePublic>;
+    count: number;
+};
+
+export type CrmExtensionsPublic = {
+    data: Array<CrmExtensionPublic>;
+    count: number;
+};
+
+export type CrmPackageDetail = CrmPackagePublic & {
+    deliveries: Array<CrmDeliveryPublic>;
+    freezes: Array<CrmFreezePublic>;
+    extensions: Array<CrmExtensionPublic>;
+    payments: Array<CrmPaymentPublic>;
+};
+
 export type CrmClientDetail = CrmClientPublic & {
-    packages: Array<CrmPackagePublic>;
+    packages: Array<CrmPackageDetail>;
     client_notes: Array<CrmNotePublic>;
 };

@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, HTTPValidationError, CrmClientCreate, CrmClientDetail, CrmClientPublic, CrmClientsPublic, CrmClientUpdate, CrmDeliveryCreate, CrmDeliveryPublic, CrmExtensionCreate, CrmExtensionPublic, CrmFreezeCreate, CrmFreezePublic, CrmNoteCreate, CrmNotePublic, CrmPackageCreate, CrmPackagePublic, CrmPackagesPublic, CrmPackageUpdate, CrmPaymentCreate, CrmPaymentPublic, CrmPaymentsPublic } from './types.gen';
+import type { itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, HTTPValidationError, CrmClientCreate, CrmClientDetail, CrmClientPublic, CrmClientsPublic, CrmClientUpdate, CrmDailyDeliveryCount, CrmDeliveriesPublic, CrmDeliveryCreate, CrmDeliveryPublic, CrmExtensionCreate, CrmExtensionPublic, CrmExtensionsPublic, CrmFreezeCreate, CrmFreezePublic, CrmFreezesPublic, CrmNoteCreate, CrmNotePublic, CrmPackageCreate, CrmPackageDetail, CrmPackagePublic, CrmPackagesPublic, CrmPackageUpdate, CrmPaymentCreate, CrmPaymentPublic, CrmPaymentsPublic } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -431,6 +431,14 @@ export class ClientsService {
 }
 
 export class PackagesService {
+    public static getTodaysDeliveryCount<ThrowOnError extends boolean = true>(options?: Options<{ body?: never; path?: never; query?: never; url: '/api/v1/packages/deliveries/today' }, ThrowOnError>) {
+        return (options?.client ?? client).get<{ 200: CrmDailyDeliveryCount }, never, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/deliveries/today',
+            ...options
+        });
+    }
     public static createPackage<ThrowOnError extends boolean = true>(options: Options<{ body: CrmPackageCreate; path?: never; query?: never; url: '/api/v1/packages/' }, ThrowOnError>) {
         return (options.client ?? client).post<{ 200: CrmPackagePublic }, { 422: HTTPValidationError }, ThrowOnError>({
             responseType: 'json',
@@ -497,6 +505,30 @@ export class PackagesService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/packages/{id}/payments',
+            ...options
+        });
+    }
+    public static readPackageDeliveries<ThrowOnError extends boolean = true>(options: Options<{ body?: never; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/deliveries' }, ThrowOnError>) {
+        return (options.client ?? client).get<{ 200: CrmDeliveriesPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/deliveries',
+            ...options
+        });
+    }
+    public static readPackageFreezes<ThrowOnError extends boolean = true>(options: Options<{ body?: never; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/freezes' }, ThrowOnError>) {
+        return (options.client ?? client).get<{ 200: CrmFreezesPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/freezes',
+            ...options
+        });
+    }
+    public static readPackageExtensions<ThrowOnError extends boolean = true>(options: Options<{ body?: never; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/extensions' }, ThrowOnError>) {
+        return (options.client ?? client).get<{ 200: CrmExtensionsPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/extensions',
             ...options
         });
     }
