@@ -322,11 +322,12 @@ test("Package status can be changed", async ({ page }) => {
 
   // Change status to paused
   await page.getByRole("button", { name: "Update Status" }).first().click()
+  await page.getByRole("combobox").last().click()
   await page.getByRole("option", { name: "paused" }).click()
   await page.getByRole("button", { name: "Save Status" }).click()
   await expect(page.getByText("Package status updated successfully")).toBeVisible()
 
-  await expect(page.getByText("paused")).toBeVisible()
+  await expect(page.getByText("paused").first()).toBeVisible()
 })
 
 // ─── extension added price / total obligation ──────────────────────────────
