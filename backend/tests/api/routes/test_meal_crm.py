@@ -191,25 +191,28 @@ def test_read_package_deliveries_freezes_extensions(
     package_id = response.json()["id"]
 
     # Create delivery
-    client.post(
+    dr = client.post(
         f"{settings.API_V1_STR}/packages/{package_id}/deliveries",
         headers=superuser_token_headers,
         json={"scheduled_date": "2026-03-02", "sent_date": "2026-03-01"},
     )
+    assert dr.status_code == 200
 
     # Create freeze
-    client.post(
+    fr = client.post(
         f"{settings.API_V1_STR}/packages/{package_id}/freezes",
         headers=superuser_token_headers,
         json={"start_date": "2026-03-05", "end_date": "2026-03-07"},
     )
+    assert fr.status_code == 200
 
     # Create extension
-    client.post(
+    er = client.post(
         f"{settings.API_V1_STR}/packages/{package_id}/extensions",
         headers=superuser_token_headers,
         json={"extra_days": 3, "date": "2026-03-10"},
     )
+    assert er.status_code == 200
 
     # GET /packages/{id}/deliveries
     response = client.get(
@@ -299,11 +302,12 @@ def test_todays_delivery_count_endpoint(
     assert pr.status_code == 200
     package_id = pr.json()["id"]
 
-    client.post(
+    ddr = client.post(
         f"{settings.API_V1_STR}/packages/{package_id}/deliveries",
         headers=superuser_token_headers,
         json={"scheduled_date": today_str},
     )
+    assert ddr.status_code == 200
 
     response2 = client.get(
         f"{settings.API_V1_STR}/packages/deliveries/today",

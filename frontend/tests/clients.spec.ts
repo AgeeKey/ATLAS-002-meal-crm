@@ -165,15 +165,17 @@ test("Delivery is persisted after page reload", async ({ page }) => {
   await expect(page.getByText("Delivery created successfully")).toBeVisible()
 
   // Verify delivery appears in the UI
+  const [year, month, day] = TODAY.split("-").map(Number)
+  const localDate = new Date(year, month - 1, day).toLocaleDateString()
   await expect(
-    page.getByText(`Meal date: ${new Date(TODAY).toLocaleDateString()}`),
+    page.getByText(`Meal date: ${localDate}`),
   ).toBeVisible()
 
   // Reload the page and verify delivery is still shown
   await page.reload()
   await page.getByRole("button", { name: "Show Details" }).first().click()
   await expect(
-    page.getByText(`Meal date: ${new Date(TODAY).toLocaleDateString()}`),
+    page.getByText(`Meal date: ${localDate}`),
   ).toBeVisible()
 })
 
