@@ -945,3 +945,166 @@ export type privateCreateUserResponses = {
 };
 
 export type privateCreateUserResponse = privateCreateUserResponses[keyof privateCreateUserResponses];
+
+
+// ============ Meal CRM Types ============
+
+export type ClientStatus = 'new' | 'active' | 'paused' | 'completed' | 'debt' | 'archived';
+export type PackageMealType = '3X' | '5X';
+export type PackageStatus = 'active' | 'completed' | 'paused';
+
+export type CrmClientCreate = {
+    name: string;
+    phone: string;
+    address?: string | null;
+    email?: string | null;
+    status?: ClientStatus;
+    contact_extra?: string | null;
+    notes?: string | null;
+};
+
+export type CrmClientUpdate = {
+    name?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    email?: string | null;
+    status?: ClientStatus | null;
+    contact_extra?: string | null;
+    notes?: string | null;
+};
+
+export type CrmClientPublic = {
+    id: string;
+    name: string;
+    phone: string;
+    address?: string | null;
+    email?: string | null;
+    status: ClientStatus;
+    contact_extra?: string | null;
+    notes?: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type CrmClientsPublic = {
+    data: Array<CrmClientPublic>;
+    count: number;
+};
+
+export type CrmPackageCreate = {
+    client_id: string;
+    meal_type: PackageMealType;
+    total_days: number;
+    start_date: string;
+    price: number;
+};
+
+export type CrmPackageUpdate = {
+    meal_type?: PackageMealType | null;
+    total_days?: number | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    price?: number | null;
+    status?: PackageStatus | null;
+};
+
+export type CrmPackagePublic = {
+    id: string;
+    client_id: string;
+    meal_type: PackageMealType;
+    total_days: number;
+    start_date: string;
+    end_date?: string | null;
+    price: number;
+    paid_amount: number;
+    status: PackageStatus;
+    created_at: string;
+    updated_at: string;
+    deliveries_count: number;
+    freeze_days: number;
+    extension_days: number;
+    days_used: number;
+    days_remaining: number;
+    debt: number;
+};
+
+export type CrmPackagesPublic = {
+    data: Array<CrmPackagePublic>;
+    count: number;
+};
+
+export type CrmPaymentCreate = {
+    package_id: string;
+    amount: number;
+    date: string;
+    comment?: string | null;
+};
+
+export type CrmPaymentPublic = {
+    id: string;
+    package_id: string;
+    amount: number;
+    date: string;
+    comment?: string | null;
+};
+
+export type CrmPaymentsPublic = {
+    data: Array<CrmPaymentPublic>;
+    count: number;
+};
+
+export type CrmFreezeCreate = {
+    start_date: string;
+    end_date: string;
+    reason?: string | null;
+};
+
+export type CrmFreezePublic = {
+    id: string;
+    package_id: string;
+    start_date: string;
+    end_date: string;
+    reason?: string | null;
+};
+
+export type CrmDeliveryCreate = {
+    scheduled_date: string;
+    sent_date?: string | null;
+};
+
+export type CrmDeliveryPublic = {
+    id: string;
+    package_id: string;
+    scheduled_date: string;
+    sent_date?: string | null;
+};
+
+export type CrmExtensionCreate = {
+    extra_days: number;
+    date: string;
+    reason?: string | null;
+};
+
+export type CrmExtensionPublic = {
+    id: string;
+    package_id: string;
+    extra_days: number;
+    date: string;
+    reason?: string | null;
+};
+
+export type CrmNoteCreate = {
+    text: string;
+};
+
+export type CrmNotePublic = {
+    id: string;
+    client_id: string;
+    text: string;
+    created_at: string;
+};
+
+export type CrmClientDetail = CrmClientPublic & {
+    packages: Array<CrmPackagePublic>;
+    client_notes: Array<CrmNotePublic>;
+};
