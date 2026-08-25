@@ -170,6 +170,7 @@ function DashboardContent() {
             value={stats.todaysDeliveries.toString()}
             description="Meal packages scheduled for delivery today"
             icon={<Package2 className="size-4" />}
+            valueTestId="todays-deliveries-value"
           />
         </div>
       </section>
@@ -192,11 +193,13 @@ function StatCard({
   value,
   description,
   icon,
+  valueTestId,
 }: {
   title: string
   value: string
   description: string
   icon: ReactNode
+  valueTestId?: string
 }) {
   return (
     <Card>
@@ -208,7 +211,12 @@ function StatCard({
         <div className="text-muted-foreground">{icon}</div>
       </CardHeader>
       <CardContent>
-        <div className="text-3xl font-semibold tracking-tight">{value}</div>
+        <div
+          className="text-3xl font-semibold tracking-tight"
+          data-testid={valueTestId}
+        >
+          {value}
+        </div>
       </CardContent>
     </Card>
   )

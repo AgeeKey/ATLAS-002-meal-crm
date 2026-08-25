@@ -4,7 +4,12 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useRouterState,
+} from "@tanstack/react-router"
 import { Plus, Search } from "lucide-react"
 import { Suspense, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
@@ -255,11 +260,15 @@ function ClientsPageContent() {
 }
 
 function ClientsPage() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+
   return (
     <Suspense
       fallback={<div className="text-muted-foreground">Loading clients…</div>}
     >
-      <ClientsPageContent />
+      {pathname.startsWith("/clients/") ? <Outlet /> : <ClientsPageContent />}
     </Suspense>
   )
 }

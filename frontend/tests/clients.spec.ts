@@ -9,6 +9,13 @@ const randomClientName = () =>
 const TODAY = new Date().toISOString().slice(0, 10)
 const YESTERDAY = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
 
+const formatDisplayedDate = (value: string) =>
+  new Date(value).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 async function createClient(
@@ -93,12 +100,7 @@ test("Dashboard shows Today's deliveries card with a numeric value", async ({
 }) => {
   await page.goto("/")
   await expect(page.getByText("Today's deliveries")).toBeVisible()
-  // The card value should be a non-negative integer (real count, not placeholder)
-  const card = page.locator("text=Today's deliveries").locator("..")
-  const valueText = await card
-    .locator(".text-3xl")
-    .first()
-    .textContent()
+  const valueText = await page.getByTestId("todays-deliveries-value").textContent()
   expect(Number(valueText)).toBeGreaterThanOrEqual(0)
 })
 
@@ -165,8 +167,7 @@ test("Delivery is persisted after page reload", async ({ page }) => {
   await expect(page.getByText("Delivery created successfully")).toBeVisible()
 
   // Verify delivery appears in the UI
-  const [year, month, day] = TODAY.split("-").map(Number)
-  const localDate = new Date(year, month - 1, day).toLocaleDateString()
+  const localDate = formatDisplayedDate(TODAY)
   await expect(
     page.getByText(`Meal date: ${localDate}`),
   ).toBeVisible()
@@ -320,10 +321,10 @@ test("Package status can be changed", async ({ page }) => {
   await expect(page.getByText("Package created successfully")).toBeVisible()
 
   // Change status to paused
-  await page.getByRole("button", { name: /Change Status/ }).first().click()
+  await page.getByRole("button", { name: "Update Status" }).first().click()
   await page.getByRole("option", { name: "paused" }).click()
-  await page.getByRole("button", { name: "Update Status" }).click()
-  await expect(page.getByText("Package updated successfully")).toBeVisible()
+  await page.getByRole("button", { name: "Save Status" }).click()
+  await expect(page.getByText("Package status updated successfully")).toBeVisible()
 
   await expect(page.getByText("paused")).toBeVisible()
 })
@@ -357,12 +358,12 @@ test("Extension with added price shows total obligation and debt correctly", asy
 
   // Total obligation should be 30,000
   await expect(page.getByText(/Total obligation/)).toBeVisible()
-  await expect(page.getByText(/30,000/)).toBeVisible()
+  await expect(page.getByText("30,000").first()).toBeVisible()
 
   // Reload and verify obligation persists
   await page.reload()
   await page.getByRole("button", { name: "Show Details" }).first().click()
-  await expect(page.getByText(/30,000/)).toBeVisible()
+  await expect(page.getByText("30,000").first()).toBeVisible()
 })
 
 // ─── delivery send/meal date semantics ────────────────────────────────────
@@ -493,7 +494,7 @@ test("Three partial payments equal to full price result in zero debt", async ({
     await page.getByLabel("Amount").fill(amount)
     await page.getByLabel("Date").fill(TODAY)
     await page.getByRole("button", { name: "Save Payment" }).click()
-    await expect(page.getByText("Payment created successfully")).toBeVisible()
+    await expect(page.getByText("Payment created successfully").first()).toBeVisible()
   }
 
   // Debt should be 0
@@ -524,9 +525,8 @@ test("Dashboard today's deliveries count increases after adding today's delivery
   const clientName = randomClientName()
   await page.goto("/")
 
-  const dashboardCard = page.locator("text=Today's deliveries").locator("..")
   const initialCount = Number(
-    await dashboardCard.locator(".text-3xl").first().textContent(),
+    await page.getByTestId("todays-deliveries-value").textContent(),
   )
 
   await createClient(page, clientName, randomPhone())
@@ -549,7 +549,7 @@ test("Dashboard today's deliveries count increases after adding today's delivery
   await page.goto("/")
   await expect(page.getByText("Today's deliveries")).toBeVisible()
   const updatedCount = Number(
-    await dashboardCard.locator(".text-3xl").first().textContent(),
+    await page.getByTestId("todays-deliveries-value").textContent(),
   )
   expect(updatedCount).toBe(initialCount + 1)
 })

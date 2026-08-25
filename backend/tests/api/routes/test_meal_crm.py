@@ -428,7 +428,7 @@ def test_delivery_usage_counts_send_day_not_meal_day(
     client, superuser_token_headers
 ) -> None:
     """Package usage is counted from sent_date (package day), not meal-date naming."""
-    client_id = _create_test_client(client, superuser_token_headers, "Bermet", "+996700000031")
+    client_id = _create_test_client(client, superuser_token_headers, "Bermet", "+996700000038")
     package_id = _create_test_package(client, superuser_token_headers, client_id, total_days=10, price=11000)
 
     response = client.post(
