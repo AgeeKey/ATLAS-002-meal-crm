@@ -168,7 +168,7 @@ function DashboardContent() {
           <StatCard
             title="Today's deliveries"
             value={stats.todaysDeliveries.toString()}
-            description="Meal packages scheduled for delivery today"
+            description="Packages sent today (send / package day)"
             icon={<Package2 className="size-4" />}
             valueTestId="todays-deliveries-value"
           />

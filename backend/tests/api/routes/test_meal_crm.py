@@ -264,9 +264,10 @@ def test_todays_delivery_count_endpoint(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
     """GET /packages/deliveries/today returns the correct count for today's deliveries."""
-    from datetime import date
+    from datetime import date, timedelta
 
     today_str = date.today().isoformat()
+    tomorrow_str = (date.today() + timedelta(days=1)).isoformat()
 
     response = client.get(
         f"{settings.API_V1_STR}/packages/deliveries/today",
@@ -305,7 +306,7 @@ def test_todays_delivery_count_endpoint(
     ddr = client.post(
         f"{settings.API_V1_STR}/packages/{package_id}/deliveries",
         headers=superuser_token_headers,
-        json={"scheduled_date": today_str},
+        json={"scheduled_date": tomorrow_str, "sent_date": today_str},
     )
     assert ddr.status_code == 200
 

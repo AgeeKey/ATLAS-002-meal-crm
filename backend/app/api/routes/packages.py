@@ -70,7 +70,7 @@ def get_todays_delivery_count(
     del current_user
     today = date.today()
     count = session.exec(
-        select(func.count()).select_from(Delivery).where(Delivery.scheduled_date == today)
+        select(func.count()).select_from(Delivery).where(Delivery.sent_date == today)
     ).one()
     return DailyDeliveryCount(date=today, count=count)
 

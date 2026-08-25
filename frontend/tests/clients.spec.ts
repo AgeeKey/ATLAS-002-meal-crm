@@ -8,6 +8,7 @@ const randomClientName = () =>
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const YESTERDAY = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+const TOMORROW = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
 
 const formatDisplayedDate = (value: string) => {
   const [year, month, day] = value.split("-").map(Number)
@@ -545,8 +546,9 @@ test("Dashboard today's deliveries count increases after adding today's delivery
 
   await page.getByRole("button", { name: "Show Details" }).first().click()
   await page.getByRole("button", { name: "Add Delivery" }).click()
-  await page.getByLabel("Meal date").fill(TODAY)
-  await page.getByLabel("Send / package day").fill(YESTERDAY)
+  // Send / package day = TODAY, meal date = TOMORROW → counts toward today's deliveries
+  await page.getByLabel("Meal date").fill(TOMORROW)
+  await page.getByLabel("Send / package day").fill(TODAY)
   await page.getByRole("button", { name: "Save Delivery" }).click()
   await expect(page.getByText("Delivery created successfully")).toBeVisible()
 
