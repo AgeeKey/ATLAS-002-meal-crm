@@ -260,15 +260,15 @@ function ClientsPageContent() {
 }
 
 function ClientsPage() {
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
+  const activeRouteId = useRouterState({
+    select: (state) => state.matches[state.matches.length - 1]?.routeId,
   })
 
   return (
     <Suspense
       fallback={<div className="text-muted-foreground">Loading clients…</div>}
     >
-      {pathname.startsWith("/clients/") ? <Outlet /> : <ClientsPageContent />}
+      {activeRouteId === Route.id ? <ClientsPageContent /> : <Outlet />}
     </Suspense>
   )
 }
