@@ -25,6 +25,7 @@ from app.models import (
     PackageCreate,
     PackagePublic,
     PackagesPublic,
+    PackageStatus,
     PackageUpdate,
     Payment,
     PaymentPublic,
@@ -122,7 +123,7 @@ def update_package(
     package = get_package_or_404(session, id)
 
     # Prevent manually completing a package that still has remaining days
-    if package_in.status == "completed":
+    if package_in.status == PackageStatus.COMPLETED:
         metrics = calculate_package_metrics(package)
         if metrics["days_remaining"] > 0:
             raise HTTPException(

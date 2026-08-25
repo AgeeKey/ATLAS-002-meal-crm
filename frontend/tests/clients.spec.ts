@@ -430,10 +430,8 @@ test("Completed package cannot have new deliveries added", async ({ page }) => {
   await page.getByLabel("Meal date").fill(dayAfterTomorrow)
   await page.getByLabel("Send date").fill(tomorrow)
   await page.getByRole("button", { name: "Save Delivery" }).click()
-  // Should show error toast
-  await expect(page.getByText(/no remaining service days|Cannot add delivery/i)).toBeVisible({ timeout: 5000 }).catch(() => {
-    // API error may show as generic error toast; just verify delivery not added
-  })
+  // API rejects the request; dialog should remain open (no success toast)
+  await expect(page.getByText("Delivery created successfully")).not.toBeVisible({ timeout: 3000 })
 })
 
 // ─── full history persists after reload (multiple packages) ───────────────

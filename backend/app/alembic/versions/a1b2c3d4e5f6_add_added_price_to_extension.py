@@ -1,7 +1,7 @@
 """Add added_price to extension
 
 Revision ID: a1b2c3d4e5f6
-Revises: 1a31ce608336
+Revises: 6e1b3f4f8f09
 Create Date: 2026-08-25 07:00:00.000000
 
 """
