@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime
 from enum import StrEnum
 
 from pydantic import EmailStr
-from sqlalchemy import DateTime
+from sqlalchemy import Column, DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -52,7 +52,7 @@ class User(UserBase, table=True):
     hashed_password: str
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
+        sa_column=Column(DateTime(timezone=True)),
     )
 
 
@@ -114,12 +114,11 @@ class Client(ClientBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
+        sa_column=Column(DateTime(timezone=True)),
     )
     updated_at: datetime = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
-        sa_column_kwargs={"onupdate": get_datetime_utc},
+        sa_column=Column(DateTime(timezone=True), onupdate=get_datetime_utc),
     )
     packages: list[Package] = Relationship(back_populates="client", cascade_delete=True)
     client_notes: list[Note] = Relationship(back_populates="client", cascade_delete=True)
@@ -164,12 +163,11 @@ class Package(PackageBase, table=True):
     client_id: uuid.UUID = Field(foreign_key="client.id", nullable=False, ondelete="CASCADE")
     created_at: datetime = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
+        sa_column=Column(DateTime(timezone=True)),
     )
     updated_at: datetime = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
-        sa_column_kwargs={"onupdate": get_datetime_utc},
+        sa_column=Column(DateTime(timezone=True), onupdate=get_datetime_utc),
     )
     client: Client | None = Relationship(back_populates="packages")
     payments: list[Payment] = Relationship(back_populates="package", cascade_delete=True)
@@ -299,7 +297,7 @@ class Note(NoteBase, table=True):
     client_id: uuid.UUID = Field(foreign_key="client.id", nullable=False, ondelete="CASCADE")
     created_at: datetime = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
+        sa_column=Column(DateTime(timezone=True)),
     )
     client: Client | None = Relationship(back_populates="client_notes")
 
