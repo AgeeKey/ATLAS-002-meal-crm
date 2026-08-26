@@ -878,13 +878,3 @@ def test_sync_keeps_paused_package_with_remaining_days() -> None:
 
     sync_package_derived_fields(package)
     assert package.status == PackageStatus.PAUSED
-
-
-def test_is_valid_package_status() -> None:
-    """is_valid_package_status accepts known statuses and rejects unknown ones."""
-    from app.models import PackageStatus
-    from app.services.package_metrics import is_valid_package_status
-
-    assert is_valid_package_status(PackageStatus.ACTIVE) is True
-    assert is_valid_package_status(PackageStatus.COMPLETED) is True
-    assert is_valid_package_status(PackageStatus.PAUSED) is True

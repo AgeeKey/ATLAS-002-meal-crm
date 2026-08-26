@@ -71,7 +71,3 @@ def sync_package_derived_fields(package: Package) -> dict[str, int]:
         package.status = PackageStatus.COMPLETED
 
     return metrics
-
-
-def is_valid_package_status(status: PackageStatus) -> bool:
-    return status in {"active", "completed", "paused"}
