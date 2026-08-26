@@ -61,10 +61,14 @@ def sync_package_derived_fields(package: Package) -> dict[str, int]:
         package.end_date = package.start_date + timedelta(
             days=effective_days + metrics["freeze_days"] - 1
         )
-    if package.status != "paused":
-        package.status = "completed" if metrics["days_remaining"] == 0 else "active"
+    if package.status != PackageStatus.PAUSED:
+        package.status = (
+            PackageStatus.COMPLETED
+            if metrics["days_remaining"] == 0
+            else PackageStatus.ACTIVE
+        )
     elif metrics["days_remaining"] == 0:
-        package.status = "completed"
+        package.status = PackageStatus.COMPLETED
 
     return metrics
 
