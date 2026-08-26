@@ -623,3 +623,268 @@ def test_completed_package_rejects_new_delivery(
     assert detail.status_code == 200
     assert len(detail.json()["packages"]) == 1
     assert detail.json()["packages"][0]["status"] == "completed"
+
+
+def test_create_client_duplicate_phone_rejected(
+    client, superuser_token_headers
+) -> None:
+    """Creating a second client with an existing phone returns 400."""
+    _create_test_client(client, superuser_token_headers, "Hadis", "+996700000040")
+    dup = client.post(
+        f"{settings.API_V1_STR}/clients/",
+        headers=superuser_token_headers,
+        json={"name": "Hadis Twin", "phone": "+996700000040", "status": "new"},
+    )
+    assert dup.status_code == 400
+
+
+def test_read_clients_list_and_status_filter(
+    client, superuser_token_headers
+) -> None:
+    """GET /clients returns the list and honors the status filter."""
+    _create_test_client(
+        client, superuser_token_headers, "Ilim", "+996700000041", status="active"
+    )
+    _create_test_client(
+        client, superuser_token_headers, "Jyldyz", "+996700000042", status="paused"
+    )
+
+    response = client.get(
+        f"{settings.API_V1_STR}/clients/",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["count"] >= 2
+
+    filtered = client.get(
+        f"{settings.API_V1_STR}/clients/",
+        headers=superuser_token_headers,
+        params={"status": "paused"},
+    )
+    assert filtered.status_code == 200
+    filtered_data = filtered.json()
+    assert filtered_data["count"] >= 1
+    assert all(item["status"] == "paused" for item in filtered_data["data"])
+
+
+def test_read_client_not_found(client, superuser_token_headers) -> None:
+    """GET /clients/{id} for a missing client returns 404."""
+    missing_id = "00000000-0000-0000-0000-000000000000"
+    response = client.get(
+        f"{settings.API_V1_STR}/clients/{missing_id}",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 404
+
+
+def test_update_client_success_and_duplicate_phone(
+    client, superuser_token_headers
+) -> None:
+    """PATCH /clients updates fields and rejects a phone already used by another client."""
+    first_id = _create_test_client(
+        client, superuser_token_headers, "Kanat", "+996700000043"
+    )
+    _create_test_client(client, superuser_token_headers, "Lira", "+996700000044")
+
+    ok = client.patch(
+        f"{settings.API_V1_STR}/clients/{first_id}",
+        headers=superuser_token_headers,
+        json={"name": "Kanat Updated", "status": "active"},
+    )
+    assert ok.status_code == 200
+    assert ok.json()["name"] == "Kanat Updated"
+    assert ok.json()["status"] == "active"
+
+    # Reusing another client's phone must be rejected
+    dup = client.patch(
+        f"{settings.API_V1_STR}/clients/{first_id}",
+        headers=superuser_token_headers,
+        json={"phone": "+996700000044"},
+    )
+    assert dup.status_code == 400
+
+
+def test_update_client_not_found(client, superuser_token_headers) -> None:
+    """PATCH /clients/{id} for a missing client returns 404."""
+    missing_id = "00000000-0000-0000-0000-000000000000"
+    response = client.patch(
+        f"{settings.API_V1_STR}/clients/{missing_id}",
+        headers=superuser_token_headers,
+        json={"name": "Ghost"},
+    )
+    assert response.status_code == 404
+
+
+def test_create_note_for_missing_client(client, superuser_token_headers) -> None:
+    """POST /clients/{id}/notes for a missing client returns 404."""
+    missing_id = "00000000-0000-0000-0000-000000000000"
+    response = client.post(
+        f"{settings.API_V1_STR}/clients/{missing_id}/notes",
+        headers=superuser_token_headers,
+        json={"text": "orphan note"},
+    )
+    assert response.status_code == 404
+
+
+def test_create_package_for_missing_client(client, superuser_token_headers) -> None:
+    """POST /packages for a missing client returns 404."""
+    missing_id = "00000000-0000-0000-0000-000000000000"
+    response = client.post(
+        f"{settings.API_V1_STR}/packages/",
+        headers=superuser_token_headers,
+        json={
+            "client_id": missing_id,
+            "meal_type": "3X",
+            "total_days": 5,
+            "start_date": "2026-07-01",
+            "price": 5000,
+            "status": "active",
+        },
+    )
+    assert response.status_code == 404
+
+
+def test_read_package_not_found(client, superuser_token_headers) -> None:
+    """GET /packages/{id} for a missing package returns 404."""
+    missing_id = "00000000-0000-0000-0000-000000000000"
+    response = client.get(
+        f"{settings.API_V1_STR}/packages/{missing_id}",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 404
+
+
+def test_read_packages_list_and_status_filter(
+    client, superuser_token_headers
+) -> None:
+    """GET /packages returns the list with metrics and honors the status filter."""
+    client_id = _create_test_client(
+        client, superuser_token_headers, "Meder", "+996700000045"
+    )
+    _create_test_package(
+        client, superuser_token_headers, client_id, total_days=10, price=5000
+    )
+
+    response = client.get(
+        f"{settings.API_V1_STR}/packages/",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] >= 1
+    assert "days_remaining" in data["data"][0]
+
+    filtered = client.get(
+        f"{settings.API_V1_STR}/packages/",
+        headers=superuser_token_headers,
+        params={"status": "active"},
+    )
+    assert filtered.status_code == 200
+    assert all(item["status"] == "active" for item in filtered.json()["data"])
+
+
+def test_freeze_end_before_start_rejected(
+    client, superuser_token_headers
+) -> None:
+    """POST /packages/{id}/freezes rejects an end_date earlier than start_date."""
+    client_id = _create_test_client(
+        client, superuser_token_headers, "Nurlan", "+996700000046"
+    )
+    package_id = _create_test_package(
+        client, superuser_token_headers, client_id, total_days=10, price=5000
+    )
+
+    response = client.post(
+        f"{settings.API_V1_STR}/packages/{package_id}/freezes",
+        headers=superuser_token_headers,
+        json={"start_date": "2026-07-10", "end_date": "2026-07-05"},
+    )
+    assert response.status_code == 400
+
+
+def test_get_freeze_days_skips_invalid_range() -> None:
+    """get_freeze_days ignores a freeze whose end_date precedes its start_date."""
+    from datetime import date as _date
+
+    from app.models import Freeze, Package, PackageMealType
+    from app.services.package_metrics import get_freeze_days
+
+    package = Package(
+        client_id=uuid.uuid4(),
+        meal_type=PackageMealType.THREE_X,
+        total_days=10,
+        start_date=_date(2026, 8, 1),
+        price=5000,
+    )
+    package.freezes = [
+        Freeze(
+            package_id=package.id,
+            start_date=_date(2026, 8, 5),
+            end_date=_date(2026, 8, 3),
+        ),
+        Freeze(
+            package_id=package.id,
+            start_date=_date(2026, 8, 10),
+            end_date=_date(2026, 8, 11),
+        ),
+    ]
+
+    # Invalid range is skipped; only the 2-day valid freeze is counted.
+    assert get_freeze_days(package) == 2
+
+
+def test_sync_completes_paused_package_when_fully_consumed() -> None:
+    """A paused package with zero remaining days is marked completed by sync."""
+    from datetime import date as _date
+
+    from app.models import Delivery, Package, PackageMealType, PackageStatus
+    from app.services.package_metrics import sync_package_derived_fields
+
+    package = Package(
+        client_id=uuid.uuid4(),
+        meal_type=PackageMealType.THREE_X,
+        total_days=1,
+        start_date=_date(2026, 8, 1),
+        price=5000,
+        status=PackageStatus.PAUSED,
+    )
+    package.deliveries = [
+        Delivery(
+            package_id=package.id,
+            scheduled_date=_date(2026, 8, 2),
+            sent_date=_date(2026, 8, 1),
+        )
+    ]
+
+    sync_package_derived_fields(package)
+    assert package.status == PackageStatus.COMPLETED
+
+
+def test_sync_keeps_paused_package_with_remaining_days() -> None:
+    """A paused package that still has remaining days stays paused."""
+    from datetime import date as _date
+
+    from app.models import Package, PackageMealType, PackageStatus
+    from app.services.package_metrics import sync_package_derived_fields
+
+    package = Package(
+        client_id=uuid.uuid4(),
+        meal_type=PackageMealType.THREE_X,
+        total_days=5,
+        start_date=_date(2026, 8, 1),
+        price=5000,
+        status=PackageStatus.PAUSED,
+    )
+
+    sync_package_derived_fields(package)
+    assert package.status == PackageStatus.PAUSED
+
+
+def test_is_valid_package_status() -> None:
+    """is_valid_package_status accepts known statuses and rejects unknown ones."""
+    from app.models import PackageStatus
+    from app.services.package_metrics import is_valid_package_status
+
+    assert is_valid_package_status(PackageStatus.ACTIVE) is True
+    assert is_valid_package_status(PackageStatus.COMPLETED) is True
+    assert is_valid_package_status(PackageStatus.PAUSED) is True
