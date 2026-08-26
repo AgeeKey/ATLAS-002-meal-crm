@@ -13,8 +13,10 @@ const TOMORROW = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
 const formatDisplayedDate = (value: string) =>
   // Parse the ISO date the same way the UI does (`new Date("YYYY-MM-DD")`,
   // i.e. UTC midnight) so the expected string matches the rendered value
-  // regardless of the test runner's timezone.
-  new Date(value).toLocaleDateString(undefined, {
+  // regardless of the test runner's timezone. Pin the locale to "en-US" to
+  // match the Playwright Chromium browser's default locale, since Node (which
+  // runs this helper) may resolve a different host locale than the browser.
+  new Date(value).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
