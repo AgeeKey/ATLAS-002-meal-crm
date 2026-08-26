@@ -10,15 +10,15 @@ const TODAY = new Date().toISOString().slice(0, 10)
 const YESTERDAY = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
 const TOMORROW = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
 
-const formatDisplayedDate = (value: string) => {
-  const [year, month, day] = value.split("-").map(Number)
-
-  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+const formatDisplayedDate = (value: string) =>
+  // Parse the ISO date the same way the UI does (`new Date("YYYY-MM-DD")`,
+  // i.e. UTC midnight) so the expected string matches the rendered value
+  // regardless of the test runner's timezone.
+  new Date(value).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
   })
-}
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
