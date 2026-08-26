@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, HTTPValidationError, CrmClientCreate, CrmClientDetail, CrmClientPublic, CrmClientsPublic, CrmClientUpdate, CrmDailyDeliveryCount, CrmDeliveriesPublic, CrmDeliveryCreate, CrmDeliveryPublic, CrmExtensionCreate, CrmExtensionPublic, CrmExtensionsPublic, CrmFreezeCreate, CrmFreezePublic, CrmFreezesPublic, CrmNoteCreate, CrmNotePublic, CrmPackageCreate, CrmPackagePublic, CrmPackagesPublic, CrmPackageUpdate, CrmPaymentCreate, CrmPaymentPublic, CrmPaymentsPublic } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -379,6 +379,169 @@ export class PrivateService {
                 'Content-Type': 'application/json',
                 ...options.headers
             }
+        });
+    }
+}
+
+
+export class ClientsService {
+    public static createClient<ThrowOnError extends boolean = true>(options: Options<{ body: CrmClientCreate; path?: never; query?: never; url: '/api/v1/clients/' }, ThrowOnError>) {
+        return (options.client ?? client).post<{ 200: CrmClientPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/clients/',
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+    }
+    public static readClients<ThrowOnError extends boolean = true>(options?: Options<{ body?: never; path?: never; query?: { status?: string; skip?: number; limit?: number }; url: '/api/v1/clients/' }, ThrowOnError>) {
+        return (options?.client ?? client).get<{ 200: CrmClientsPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/clients/',
+            ...options
+        });
+    }
+    public static readClient<ThrowOnError extends boolean = true>(options: Options<{ body?: never; path: { id: string }; query?: never; url: '/api/v1/clients/{id}' }, ThrowOnError>) {
+        return (options.client ?? client).get<{ 200: CrmClientDetail }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/clients/{id}',
+            ...options
+        });
+    }
+    public static updateClient<ThrowOnError extends boolean = true>(options: Options<{ body: CrmClientUpdate; path: { id: string }; query?: never; url: '/api/v1/clients/{id}' }, ThrowOnError>) {
+        return (options.client ?? client).patch<{ 200: CrmClientPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/clients/{id}',
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+    }
+    public static createClientNote<ThrowOnError extends boolean = true>(options: Options<{ body: CrmNoteCreate; path: { id: string }; query?: never; url: '/api/v1/clients/{id}/notes' }, ThrowOnError>) {
+        return (options.client ?? client).post<{ 200: CrmNotePublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/clients/{id}/notes',
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+    }
+}
+
+export class PackagesService {
+    public static getTodaysDeliveryCount<ThrowOnError extends boolean = true>(options?: Options<{ body?: never; path?: never; query?: never; url: '/api/v1/packages/deliveries/today' }, ThrowOnError>) {
+        return (options?.client ?? client).get<{ 200: CrmDailyDeliveryCount }, never, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/deliveries/today',
+            ...options
+        });
+    }
+    public static createPackage<ThrowOnError extends boolean = true>(options: Options<{ body: CrmPackageCreate; path?: never; query?: never; url: '/api/v1/packages/' }, ThrowOnError>) {
+        return (options.client ?? client).post<{ 200: CrmPackagePublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/',
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+    }
+    public static readPackages<ThrowOnError extends boolean = true>(options?: Options<{ body?: never; path?: never; query?: { status?: string; skip?: number; limit?: number }; url: '/api/v1/packages/' }, ThrowOnError>) {
+        return (options?.client ?? client).get<{ 200: CrmPackagesPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/',
+            ...options
+        });
+    }
+    public static readPackage<ThrowOnError extends boolean = true>(options: Options<{ body?: never; path: { id: string }; query?: never; url: '/api/v1/packages/{id}' }, ThrowOnError>) {
+        return (options.client ?? client).get<{ 200: CrmPackagePublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}',
+            ...options
+        });
+    }
+    public static updatePackage<ThrowOnError extends boolean = true>(options: Options<{ body: CrmPackageUpdate; path: { id: string }; query?: never; url: '/api/v1/packages/{id}' }, ThrowOnError>) {
+        return (options.client ?? client).patch<{ 200: CrmPackagePublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}',
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+    }
+    public static createDelivery<ThrowOnError extends boolean = true>(options: Options<{ body: CrmDeliveryCreate; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/deliveries' }, ThrowOnError>) {
+        return (options.client ?? client).post<{ 200: CrmDeliveryPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/deliveries',
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+    }
+    public static createFreeze<ThrowOnError extends boolean = true>(options: Options<{ body: CrmFreezeCreate; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/freezes' }, ThrowOnError>) {
+        return (options.client ?? client).post<{ 200: CrmFreezePublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/freezes',
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+    }
+    public static createExtension<ThrowOnError extends boolean = true>(options: Options<{ body: CrmExtensionCreate; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/extensions' }, ThrowOnError>) {
+        return (options.client ?? client).post<{ 200: CrmExtensionPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/extensions',
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+    }
+    public static readPackagePayments<ThrowOnError extends boolean = true>(options: Options<{ body?: never; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/payments' }, ThrowOnError>) {
+        return (options.client ?? client).get<{ 200: CrmPaymentsPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/payments',
+            ...options
+        });
+    }
+    public static readPackageDeliveries<ThrowOnError extends boolean = true>(options: Options<{ body?: never; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/deliveries' }, ThrowOnError>) {
+        return (options.client ?? client).get<{ 200: CrmDeliveriesPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/deliveries',
+            ...options
+        });
+    }
+    public static readPackageFreezes<ThrowOnError extends boolean = true>(options: Options<{ body?: never; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/freezes' }, ThrowOnError>) {
+        return (options.client ?? client).get<{ 200: CrmFreezesPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/freezes',
+            ...options
+        });
+    }
+    public static readPackageExtensions<ThrowOnError extends boolean = true>(options: Options<{ body?: never; path: { id: string }; query?: never; url: '/api/v1/packages/{id}/extensions' }, ThrowOnError>) {
+        return (options.client ?? client).get<{ 200: CrmExtensionsPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/packages/{id}/extensions',
+            ...options
+        });
+    }
+}
+
+export class PaymentsService {
+    public static createPayment<ThrowOnError extends boolean = true>(options: Options<{ body: CrmPaymentCreate; path?: never; query?: never; url: '/api/v1/payments/' }, ThrowOnError>) {
+        return (options.client ?? client).post<{ 200: CrmPaymentPublic }, { 422: HTTPValidationError }, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/payments/',
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers }
         });
     }
 }
