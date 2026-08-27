@@ -23,11 +23,11 @@ import { PasswordInput } from "@/components/ui/password-input"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 
 const formSchema = z.object({
-  username: z.email({ message: "Invalid email address" }),
+  username: z.email({ message: "Неверный адрес email" }),
   password: z
     .string()
-    .min(1, { message: "Password is required" })
-    .min(8, { message: "Password must be at least 8 characters" }),
+    .min(1, { message: "Пароль обязателен" })
+    .min(8, { message: "Пароль должен содержать не менее 8 символов" }),
 }) satisfies z.ZodType<AccessToken>
 
 type FormData = z.infer<typeof formSchema>
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       {
-        title: "Log In - FastAPI Template",
+        title: "Вход — Atlas Meal CRM",
       },
     ],
   }),
@@ -69,74 +69,90 @@ function Login() {
 
   return (
     <AuthLayout>
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-6"
-        >
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Login to your account</h1>
-          </div>
+      <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-sm">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-6"
+          >
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Вход в систему
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Введите учетные данные для входа в панель CRM
+              </p>
+            </div>
 
-          <div className="grid gap-4">
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      data-testid="email-input"
-                      placeholder="user@example.com"
-                      type="email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-xs" />
-                </FormItem>
-              )}
-            />
+            <div className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Электронная почта</FormLabel>
+                    <FormControl>
+                      <Input
+                        data-testid="email-input"
+                        placeholder="user@example.com"
+                        type="email"
+                        autoComplete="email"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center">
-                    <FormLabel>Password</FormLabel>
-                    <RouterLink
-                      to="/recover-password"
-                      className="ml-auto text-sm underline-offset-4 hover:underline"
-                    >
-                      Forgot your password?
-                    </RouterLink>
-                  </div>
-                  <FormControl>
-                    <PasswordInput
-                      data-testid="password-input"
-                      placeholder="Password"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-xs" />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Пароль</FormLabel>
+                      <RouterLink
+                        to="/recover-password"
+                        className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        Забыли пароль?
+                      </RouterLink>
+                    </div>
+                    <FormControl>
+                      <PasswordInput
+                        data-testid="password-input"
+                        placeholder="Пароль"
+                        autoComplete="current-password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
 
-            <LoadingButton type="submit" loading={loginMutation.isPending}>
-              Log In
-            </LoadingButton>
-          </div>
+              <LoadingButton
+                type="submit"
+                loading={loginMutation.isPending}
+                className="w-full shadow-xs"
+              >
+                Войти
+              </LoadingButton>
+            </div>
 
-          <div className="text-center text-sm">
-            Don't have an account yet?{" "}
-            <RouterLink to="/signup" className="underline underline-offset-4">
-              Sign up
-            </RouterLink>
-          </div>
-        </form>
-      </Form>
+            <div className="text-center text-xs text-muted-foreground">
+              Ещё нет аккаунта?{" "}
+              <RouterLink
+                to="/signup"
+                className="font-medium text-primary underline underline-offset-4 hover:text-primary/90"
+              >
+                Зарегистрироваться
+              </RouterLink>
+            </div>
+          </form>
+        </Form>
+      </div>
     </AuthLayout>
   )
 }

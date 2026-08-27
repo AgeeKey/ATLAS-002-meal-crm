@@ -7,9 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import useAuth from "@/hooks/useAuth"
 
 const tabsConfig = [
-  { value: "my-profile", title: "My profile", component: UserInformation },
-  { value: "password", title: "Password", component: ChangePassword },
-  { value: "danger-zone", title: "Danger zone", component: DeleteAccount },
+  { value: "my-profile", title: "Мой профиль", component: UserInformation },
+  { value: "password", title: "Пароль", component: ChangePassword },
+  { value: "danger-zone", title: "Опасная зона", component: DeleteAccount },
 ]
 
 export const Route = createFileRoute("/_layout/settings")({
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_layout/settings")({
   head: () => ({
     meta: [
       {
-        title: "Settings - FastAPI Template",
+        title: "Настройки - Meal CRM",
       },
     ],
   }),
@@ -36,9 +36,11 @@ function UserSettings() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">User Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Настройки пользователя
+        </h1>
         <p className="text-muted-foreground">
-          Manage your account settings and preferences
+          Управление настройками аккаунта и профиля
         </p>
       </div>
 

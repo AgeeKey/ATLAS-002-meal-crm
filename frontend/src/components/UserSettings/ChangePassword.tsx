@@ -21,18 +21,18 @@ const formSchema = z
   .object({
     current_password: z
       .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+      .min(1, { message: "Пароль обязателен" })
+      .min(8, { message: "Пароль должен содержать не менее 8 символов" }),
     new_password: z
       .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+      .min(1, { message: "Пароль обязателен" })
+      .min(8, { message: "Пароль должен содержать не менее 8 символов" }),
     confirm_password: z
       .string()
-      .min(1, { message: "Password confirmation is required" }),
+      .min(1, { message: "Подтверждение пароля обязательно" }),
   })
   .refine((data) => data.new_password === data.confirm_password, {
-    message: "The passwords don't match",
+    message: "Пароли не совпадают",
     path: ["confirm_password"],
   })
 
@@ -55,7 +55,7 @@ const ChangePassword = () => {
     mutationFn: (data: UpdatePassword) =>
       UsersService.updatePasswordMe({ body: data }),
     onSuccess: () => {
-      showSuccessToast("Password updated successfully")
+      showSuccessToast("Пароль успешно обновлен")
       form.reset()
     },
     onError: handleError.bind(showErrorToast),
@@ -67,7 +67,7 @@ const ChangePassword = () => {
 
   return (
     <div className="max-w-md">
-      <h3 className="text-lg font-semibold py-4">Change Password</h3>
+      <h3 className="text-lg font-semibold py-4">Изменение пароля</h3>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -78,7 +78,7 @@ const ChangePassword = () => {
             name="current_password"
             render={({ field, fieldState }) => (
               <FormItem>
-                <FormLabel>Current Password</FormLabel>
+                <FormLabel>Текущий пароль</FormLabel>
                 <FormControl>
                   <PasswordInput
                     data-testid="current-password-input"
@@ -97,7 +97,7 @@ const ChangePassword = () => {
             name="new_password"
             render={({ field, fieldState }) => (
               <FormItem>
-                <FormLabel>New Password</FormLabel>
+                <FormLabel>Новый пароль</FormLabel>
                 <FormControl>
                   <PasswordInput
                     data-testid="new-password-input"
@@ -116,7 +116,7 @@ const ChangePassword = () => {
             name="confirm_password"
             render={({ field, fieldState }) => (
               <FormItem>
-                <FormLabel>Confirm Password</FormLabel>
+                <FormLabel>Подтвердите пароль</FormLabel>
                 <FormControl>
                   <PasswordInput
                     data-testid="confirm-password-input"
@@ -135,7 +135,7 @@ const ChangePassword = () => {
             loading={mutation.isPending}
             className="self-start"
           >
-            Update Password
+            Обновить пароль
           </LoadingButton>
         </form>
       </Form>

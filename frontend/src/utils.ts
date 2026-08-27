@@ -7,11 +7,17 @@ function extractErrorMessage(err: Error): string {
       return errDetail[0].msg
     }
     if (typeof errDetail === "string") {
+      if (errDetail === "Incorrect email or password") {
+        return "Неправильный email или пароль"
+      }
+      if (errDetail === "Invalid token") {
+        return "Неверный токен"
+      }
       return errDetail
     }
     return err.message
   }
-  return "Something went wrong."
+  return "Что-то пошло не так."
 }
 
 export const handleError = function (this: (msg: string) => void, err: Error) {

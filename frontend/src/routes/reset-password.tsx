@@ -33,14 +33,14 @@ const formSchema = z
   .object({
     new_password: z
       .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+      .min(1, { message: "Пароль обязателен" })
+      .min(8, { message: "Пароль должен содержать не менее 8 символов" }),
     confirm_password: z
       .string()
-      .min(1, { message: "Password confirmation is required" }),
+      .min(1, { message: "Подтверждение пароля обязательно" }),
   })
   .refine((data) => data.new_password === data.confirm_password, {
-    message: "The passwords don't match",
+    message: "Пароли не совпадают",
     path: ["confirm_password"],
   })
 
@@ -60,7 +60,7 @@ export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
       {
-        title: "Reset Password - FastAPI Template",
+        title: "Сбросить пароль — Atlas Meal CRM",
       },
     ],
   }),
@@ -85,7 +85,7 @@ function ResetPassword() {
     mutationFn: (data: { new_password: string; token: string }) =>
       LoginService.resetPassword({ body: data }),
     onSuccess: () => {
-      showSuccessToast("Password updated successfully")
+      showSuccessToast("Пароль успешно обновлен")
       form.reset()
       navigate({ to: "/login" })
     },
@@ -98,69 +98,81 @@ function ResetPassword() {
 
   return (
     <AuthLayout>
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-6"
-        >
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Reset Password</h1>
-          </div>
+      <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-sm">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-6"
+          >
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Сбросить пароль
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Придумайте новый безопасный пароль (не менее 8 символов)
+              </p>
+            </div>
 
-          <div className="grid gap-4">
-            <FormField
-              control={form.control}
-              name="new_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>New Password</FormLabel>
-                  <FormControl>
-                    <PasswordInput
-                      data-testid="new-password-input"
-                      placeholder="New Password"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="new_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Новый пароль</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        data-testid="new-password-input"
+                        placeholder="Новый пароль"
+                        autoComplete="new-password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="confirm_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <PasswordInput
-                      data-testid="confirm-password-input"
-                      placeholder="Confirm Password"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="confirm_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Подтвердите пароль</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        data-testid="confirm-password-input"
+                        placeholder="Подтвердите пароль"
+                        autoComplete="new-password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
 
-            <LoadingButton
-              type="submit"
-              className="w-full"
-              loading={mutation.isPending}
-            >
-              Reset Password
-            </LoadingButton>
-          </div>
+              <LoadingButton
+                type="submit"
+                className="w-full shadow-xs"
+                loading={mutation.isPending}
+              >
+                Сбросить пароль
+              </LoadingButton>
+            </div>
 
-          <div className="text-center text-sm">
-            Remember your password?{" "}
-            <RouterLink to="/login" className="underline underline-offset-4">
-              Log in
-            </RouterLink>
-          </div>
-        </form>
-      </Form>
+            <div className="text-center text-xs text-muted-foreground">
+              Вспомнили пароль?{" "}
+              <RouterLink
+                to="/login"
+                className="font-medium text-primary underline underline-offset-4 hover:text-primary/90"
+              >
+                Войти
+              </RouterLink>
+            </div>
+          </form>
+        </Form>
+      </div>
     </AuthLayout>
   )
 }

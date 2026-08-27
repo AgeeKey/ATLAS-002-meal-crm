@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ATLAS CRM Presentation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
+        
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .slide {
+            width: 297mm; /* A4 Landscape width */
+            height: 210mm; /* A4 Landscape height */
+            background: white;
+            margin: 0 auto;
+            page-break-after: always;
+            box-sizing: border-box;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Cover Slide */
+        .slide.cover {
+            background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+            color: white;
+            text-align: center;
+        }
+        .slide.cover h1 {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .slide.cover p {
+            font-size: 32px;
+            opacity: 0.9;
+        }
+
+        h2 {
+            font-size: 48px;
+            color: #047857;
+            margin-top: 0;
+            margin-bottom: 30px;
+            border-bottom: 4px solid #10b981;
+            padding-bottom: 10px;
+            display: inline-block;
+        }
+
+        ul {
+            font-size: 30px;
+            line-height: 1.6;
+        }
+        li {
+            margin-bottom: 20px;
+        }
+
+        .highlight {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .alert-red {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .alert-yellow {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            font-size: 18px;
+            color: #9ca3af;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+        
+        .box {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1 -->
+    <div class="slide cover">
+        <h1>ATLAS CRM</h1>
+        <p>Простое руководство для менеджера по продажам</p>
+    </div>
+
+    <!-- Slide 2 -->
+    <div class="slide">
+        <h2>Что это за программа?</h2>
+        <div class="grid">
+            <div class="box">
+                <h3 style="font-size: 28px; margin-top:0;">Зачем она нам?</h3>
+                <p style="font-size: 24px; line-height: 1.5;">ATLAS — это ваш новый умный блокнот. Мы отказываемся от запутанных Excel-таблиц и бумажек.</p>
+                <p style="font-size: 24px; line-height: 1.5;">Программа создана специально для доставки здорового питания, чтобы вы могли сфокусироваться на клиентах, а не на математике.</p>
+            </div>
+            <div>
+                <ul>
+                    <li>Ни один клиент больше <span class="alert-red">не потеряется</span>.</li>
+                    <li>Программа <span class="highlight">сама считает</span> дни доставки и долги.</li>
+                    <li>Вся база в безопасном месте и всегда под рукой.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer">ATLAS CRM • Введение</div>
+    </div>
+
+    <!-- Slide 3 -->
+    <div class="slide">
+        <h2>Первые шаги: С чего начать?</h2>
+        <ul>
+            <li><strong>Шаг 1:</strong> Откройте сайт программы и введите свой логин и пароль.</li>
+            <li><strong>Шаг 2:</strong> Вы попадете на <b>Дашборд (Главный экран)</b>.</li>
+            <li><strong>Шаг 3:</strong> На Дашборде собрана самая важная информация на сегодня:
+                <ul>
+                    <li>Сколько доставок нужно сделать сегодня.</li>
+                    <li>Сколько у нас сейчас активных клиентов.</li>
+                    <li>У кого <span class="alert-yellow">скоро заканчивается подписка</span> (кому пора звонить!).</li>
+                </ul>
+            </li>
+        </ul>
+        <div class="footer">ATLAS CRM • Первые шаги</div>
+    </div>
+
+    <!-- Slide 4 -->
+    <div class="slide">
+        <h2>Как добавить нового клиента?</h2>
+        <div class="box" style="margin-top: 20px;">
+            <ol style="font-size: 28px; line-height: 1.6;">
+                <li>Перейдите в раздел <b>«Клиенты»</b> (слева в меню).</li>
+                <li>Нажмите большую зеленую кнопку <b>«Добавить клиента»</b>.</li>
+                <li>Впишите его имя, номер телефона и адрес доставки.</li>
+                <li>Сразу после этого добавьте ему <b>Пакет питания</b> (например, 3-х разовое на 20 дней).</li>
+                <li>Укажите стоимость пакета, и система начнет вести учет!</li>
+            </ol>
+        </div>
+        <div class="footer">ATLAS CRM • Работа с базой</div>
+    </div>
+
+    <!-- Slide 5 -->
+    <div class="slide">
+        <h2>Всё как на ладони (Карточка клиента)</h2>
+        <p style="font-size: 26px;">В карточке каждого клиента есть "волшебные" кнопки. Вам больше не нужно считать даты в уме:</p>
+        <ul style="font-size: 26px;">
+            <li>❄️ <b>Заморозка:</b> Клиент уехал в отпуск? Нажмите "Заморозить" на 3 дня, и программа <span class="highlight">автоматически</span> продлит его пакет на эти 3 дня.</li>
+            <li>🎁 <b>Продление:</b> Решили подарить клиенту 2 бесплатных дня? Нажмите "Продлить".</li>
+            <li>💳 <b>Оплата:</b> Клиент скинул деньги на карту или отдал курьеру? Внесите это через кнопку "Добавить оплату", и его долг сразу исчезнет.</li>
+        </ul>
+        <div class="footer">ATLAS CRM • Управление подписками</div>
+    </div>
+
+    <!-- Slide 6 -->
+    <div class="slide">
+        <h2>Цветовые подсказки: Куда смотреть?</h2>
+        <p style="font-size: 26px;">Мы сделали систему светофора, чтобы вы моментально понимали ситуацию:</p>
+        <div class="grid" style="margin-top: 30px;">
+            <div class="box" style="border-left: 10px solid #10b981;">
+                <h3 style="font-size: 28px; margin-top:0; color: #10b981;">Зеленый (Изумрудный)</h3>
+                <p style="font-size: 24px;">Всё отлично! Клиент активен, питается, всё оплачено.</p>
+            </div>
+            <div class="box" style="border-left: 10px solid #f59e0b;">
+                <h3 style="font-size: 28px; margin-top:0; color: #f59e0b;">Желтый (Янтарный)</h3>
+                <p style="font-size: 24px;">Внимание: пакет клиента на паузе (заморозке) или скоро закончится. Пора готовить спецпредложение!</p>
+            </div>
+            <div class="box" style="border-left: 10px solid #ef4444;">
+                <h3 style="font-size: 28px; margin-top:0; color: #ef4444;">Красный (Бейдж Долга)</h3>
+                <p style="font-size: 24px;">Требуется ваше действие! Клиент получил питание, но не оплатил (или оплатил не полностью).</p>
+            </div>
+            <div class="box" style="border-left: 10px solid #6b7280;">
+                <h3 style="font-size: 28px; margin-top:0; color: #6b7280;">Серый</h3>
+                <p style="font-size: 24px;">Пакет полностью завершен или клиент в архиве.</p>
+            </div>
+        </div>
+        <div class="footer">ATLAS CRM • Цвета</div>
+    </div>
+
+    <!-- Slide 7 -->
+    <div class="slide cover">
+        <h1>Приятной работы!</h1>
+        <p>Ваша рутина теперь автоматизирована.<br>Фокусируйтесь на заботе о клиентах и высоких продажах!</p>
+    </div>
+
+</body>
+</html>

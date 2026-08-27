@@ -1,11 +1,7 @@
 import { Link } from "@tanstack/react-router"
+import { UtensilsCrossed } from "lucide-react"
 
-import { useTheme } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
-import icon from "/assets/images/fastapi-icon.svg"
-import iconLight from "/assets/images/fastapi-icon-light.svg"
-import logo from "/assets/images/fastapi-logo.svg"
-import logoLight from "/assets/images/fastapi-logo-light.svg"
 
 interface LogoProps {
   variant?: "full" | "icon" | "responsive"
@@ -18,43 +14,50 @@ export function Logo({
   className,
   asLink = true,
 }: LogoProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
+  const iconElement = (
+    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+      <UtensilsCrossed className="size-4" />
+    </div>
+  )
 
-  const fullLogo = isDark ? logoLight : logo
-  const iconLogo = isDark ? iconLight : icon
+  const textElement = (
+    <div className="flex flex-col text-left leading-tight">
+      <span className="text-sm font-bold tracking-tight text-foreground">
+        Atlas Meal
+      </span>
+      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+        CRM • Питание
+      </span>
+    </div>
+  )
 
-  const content =
-    variant === "responsive" ? (
-      <>
-        <img
-          src={fullLogo}
-          alt="FastAPI"
+  const content = (
+    <div className={cn("flex items-center gap-2.5 select-none", className)}>
+      {iconElement}
+      {variant === "icon" ? null : (
+        <div
           className={cn(
-            "h-6 w-auto group-data-[collapsible=icon]:hidden",
-            className,
+            variant === "responsive" &&
+              "group-data-[collapsible=icon]:hidden transition-opacity",
           )}
-        />
-        <img
-          src={iconLogo}
-          alt="FastAPI"
-          className={cn(
-            "size-5 hidden group-data-[collapsible=icon]:block",
-            className,
-          )}
-        />
-      </>
-    ) : (
-      <img
-        src={variant === "full" ? fullLogo : iconLogo}
-        alt="FastAPI"
-        className={cn(variant === "full" ? "h-6 w-auto" : "size-5", className)}
-      />
-    )
+        >
+          {textElement}
+        </div>
+      )}
+    </div>
+  )
 
   if (!asLink) {
     return content
   }
 
-  return <Link to="/">{content}</Link>
+  return (
+    <Link
+      to="/"
+      aria-label="Atlas Meal CRM — На главную"
+      className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {content}
+    </Link>
+  )
 }

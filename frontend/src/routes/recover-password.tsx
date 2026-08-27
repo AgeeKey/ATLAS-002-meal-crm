@@ -25,7 +25,7 @@ import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
 const formSchema = z.object({
-  email: z.email({ message: "Invalid email address" }),
+  email: z.email({ message: "Неверный адрес email" }),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/recover-password")({
   head: () => ({
     meta: [
       {
-        title: "Recover Password - FastAPI Template",
+        title: "Восстановление пароля — Atlas Meal CRM",
       },
     ],
   }),
@@ -66,7 +66,7 @@ function RecoverPassword() {
   const mutation = useMutation({
     mutationFn: recoverPassword,
     onSuccess: () => {
-      showSuccessToast("Password recovery email sent successfully")
+      showSuccessToast("Ссылка для восстановления пароля успешно отправлена")
       form.reset()
     },
     onError: handleError.bind(showErrorToast),
@@ -79,52 +79,63 @@ function RecoverPassword() {
 
   return (
     <AuthLayout>
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-6"
-        >
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Password Recovery</h1>
-          </div>
+      <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-sm">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-6"
+          >
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Восстановление пароля
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Введите ваш рабочий email для получения ссылки сброса
+              </p>
+            </div>
 
-          <div className="grid gap-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      data-testid="email-input"
-                      placeholder="user@example.com"
-                      type="email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Электронная почта</FormLabel>
+                    <FormControl>
+                      <Input
+                        data-testid="email-input"
+                        placeholder="user@example.com"
+                        type="email"
+                        autoComplete="email"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
 
-            <LoadingButton
-              type="submit"
-              className="w-full"
-              loading={mutation.isPending}
-            >
-              Continue
-            </LoadingButton>
-          </div>
+              <LoadingButton
+                type="submit"
+                className="w-full shadow-xs"
+                loading={mutation.isPending}
+              >
+                Продолжить
+              </LoadingButton>
+            </div>
 
-          <div className="text-center text-sm">
-            Remember your password?{" "}
-            <RouterLink to="/login" className="underline underline-offset-4">
-              Log in
-            </RouterLink>
-          </div>
-        </form>
-      </Form>
+            <div className="text-center text-xs text-muted-foreground">
+              Вспомнили пароль?{" "}
+              <RouterLink
+                to="/login"
+                className="font-medium text-primary underline underline-offset-4 hover:text-primary/90"
+              >
+                Войти
+              </RouterLink>
+            </div>
+          </form>
+        </Form>
+      </div>
     </AuthLayout>
   )
 }

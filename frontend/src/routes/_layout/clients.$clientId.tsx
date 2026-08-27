@@ -1,229 +1,138 @@
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
-import {
+  AlertTriangle,
+  ArrowLeft,
   Calendar,
-  Clock3,
   CreditCard,
+  Mail,
   MapPin,
   NotebookPen,
-  Package2,
+  Package,
   Phone,
-  Plus,
+  UtensilsCrossed,
 } from "lucide-react"
-import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
+import { Suspense, useMemo } from "react"
 
-import {
-  type ClientStatus,
-  ClientsService,
-  type CrmClientUpdate,
-  type CrmNoteCreate,
-  type CrmPackageCreate,
-  type CrmPackageDetail,
-  type CrmPackageUpdate,
-  type PackageStatus,
-  PackagesService,
-  PaymentsService,
-} from "@/client"
+import { type ClientStatus, ClientsService } from "@/client"
+import { AddNoteForm } from "@/components/Clients/AddNoteForm"
+import { AddPackageDialog } from "@/components/Clients/AddPackageDialog"
+// Import subcomponents
+import { EditClientDialog } from "@/components/Clients/EditClientDialog"
+import { PackageCard } from "@/components/Clients/PackageCard"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import useCustomToast from "@/hooks/useCustomToast"
-import { handleError } from "@/utils"
+import { cn } from "@/lib/utils"
 
-const CLIENT_STATUSES = [
-  "new",
-  "active",
-  "paused",
-  "completed",
-  "debt",
-  "archived",
-] as const
-const PACKAGE_STATUSES = ["active", "completed", "paused"] as const
-const PACKAGE_MEAL_TYPES = ["3X", "5X"] as const
+const statusDotColors: Record<ClientStatus, string> = {
+  active: "bg-emerald-500",
+  debt: "bg-rose-500",
+  paused: "bg-amber-500",
+  new: "bg-sky-500",
+  completed: "bg-slate-400",
+  archived: "bg-zinc-400",
+}
 
-const clientFormSchema = z.object({
-  name: z.string().trim().min(1, { message: "Name is required" }),
-  phone: z.string().trim().min(1, { message: "Phone is required" }),
-  address: z.string().trim().optional(),
-  email: z
-    .string()
-    .trim()
-    .optional()
-    .refine((value) => !value || /\S+@\S+\.\S+/.test(value), {
-      message: "Invalid email address",
-    }),
-  status: z.enum(CLIENT_STATUSES),
-  notes: z.string().trim().optional(),
-})
-const packageFormSchema = z.object({
-  meal_type: z.enum(PACKAGE_MEAL_TYPES),
-  total_days: z
-    .number()
-    .int()
-    .min(1, { message: "Total days must be at least 1" }),
-  start_date: z.string().min(1, { message: "Start date is required" }),
-  price: z.number().min(0, { message: "Price must be 0 or more" }),
-})
-const paymentFormSchema = z.object({
-  amount: z.number().min(1, { message: "Amount must be at least 1" }),
-  date: z.string().min(1, { message: "Date is required" }),
-  comment: z.string().trim().optional(),
-})
-const deliveryFormSchema = z
-  .object({
-    scheduled_date: z.string().min(1, { message: "Meal date is required" }),
-    sent_date: z.string().min(1, { message: "Send / package day is required" }),
-  })
-  .refine(
-    (value) => {
-      if (!value.scheduled_date || !value.sent_date) return true
-      const meal = new Date(value.scheduled_date)
-      const send = new Date(value.sent_date)
-      const diff = Math.round(
-        (meal.getTime() - send.getTime()) / MS_PER_DAY,
-      )
-      return diff === 1
-    },
-    {
-      message: "Send / package day must be exactly one day before meal date",
-      path: ["sent_date"],
-    },
-  )
-const freezeFormSchema = z
-  .object({
-    start_date: z.string().min(1, { message: "Start date is required" }),
-    end_date: z.string().min(1, { message: "End date is required" }),
-    reason: z.string().trim().optional(),
-  })
-  .refine((value) => value.end_date >= value.start_date, {
-    message: "End date must be on or after start date",
-    path: ["end_date"],
-  })
-const extensionFormSchema = z.object({
-  extra_days: z
-    .number()
-    .int()
-    .min(1, { message: "Extra days must be at least 1" }),
-  added_price: z
-    .number()
-    .int()
-    .min(0, { message: "Added price must be 0 or more" }),
-  date: z.string().min(1, { message: "Date is required" }),
-  reason: z.string().trim().optional(),
-})
-const noteFormSchema = z.object({
-  text: z.string().trim().min(1, { message: "Note is required" }),
-})
-const packageStatusFormSchema = z.object({
-  status: z.enum(PACKAGE_STATUSES),
-})
-
-type ClientFormData = z.infer<typeof clientFormSchema>
-type PackageFormData = z.infer<typeof packageFormSchema>
-type PaymentFormData = z.infer<typeof paymentFormSchema>
-type DeliveryFormData = z.infer<typeof deliveryFormSchema>
-type FreezeFormData = z.infer<typeof freezeFormSchema>
-type ExtensionFormData = z.infer<typeof extensionFormSchema>
-type NoteFormData = z.infer<typeof noteFormSchema>
-type PackageStatusFormData = z.infer<typeof packageStatusFormSchema>
-
-const clientStatusBadgeVariant: Record<
+const statusAvatarStyles: Record<
   ClientStatus,
-  "default" | "secondary" | "outline" | "destructive"
+  { bg: string; text: string; border: string }
 > = {
-  new: "secondary",
-  active: "default",
-  paused: "outline",
-  completed: "secondary",
-  debt: "destructive",
-  archived: "outline",
+  active: {
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-700 dark:text-emerald-300",
+    border: "border-emerald-500/30",
+  },
+  debt: {
+    bg: "bg-rose-500/10",
+    text: "text-rose-700 dark:text-rose-300",
+    border: "border-rose-500/30",
+  },
+  paused: {
+    bg: "bg-amber-500/10",
+    text: "text-amber-700 dark:text-amber-300",
+    border: "border-amber-500/30",
+  },
+  new: {
+    bg: "bg-sky-500/10",
+    text: "text-sky-700 dark:text-sky-300",
+    border: "border-sky-500/30",
+  },
+  completed: {
+    bg: "bg-slate-500/10",
+    text: "text-slate-700 dark:text-slate-300",
+    border: "border-slate-500/30",
+  },
+  archived: {
+    bg: "bg-muted",
+    text: "text-muted-foreground",
+    border: "border-border",
+  },
 }
 
-const packageStatusBadgeVariant: Record<
-  PackageStatus,
-  "default" | "secondary" | "outline"
+const statusBadgeStyles: Record<
+  ClientStatus,
+  { label: string; className: string }
 > = {
-  active: "default",
-  completed: "secondary",
-  paused: "outline",
+  active: {
+    label: "Активен",
+    className:
+      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  },
+  debt: {
+    label: "С долгом",
+    className:
+      "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30 font-semibold",
+  },
+  paused: {
+    label: "На паузе",
+    className:
+      "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  },
+  new: {
+    label: "Новый",
+    className: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30",
+  },
+  completed: {
+    label: "Завершен",
+    className:
+      "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/30",
+  },
+  archived: {
+    label: "Архив",
+    className: "bg-muted text-muted-foreground border-border",
+  },
 }
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
+}
+
+const currencyFormatter = new Intl.NumberFormat("ru-KG", {
+  style: "currency",
+  currency: "KGS",
   maximumFractionDigits: 0,
 })
-const MS_PER_DAY = 86400000
 
-const normalizeOptionalText = (value?: string) => {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : null
-}
-
-const formatDate = (value?: string | null) => {
-  if (!value) {
-    return "—"
-  }
-
-  return new Date(value).toLocaleDateString(undefined, {
+const formatDate = (value: string) =>
+  new Date(value).toLocaleDateString("ru-RU", {
     year: "numeric",
     month: "short",
     day: "numeric",
   })
-}
 
 const formatDateTime = (value: string) =>
-  new Date(value).toLocaleString(undefined, {
+  new Date(value).toLocaleString("ru-KG", {
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   })
-
-const shiftDate = (value: string, days: number) => {
-  const date = new Date(value)
-  date.setDate(date.getDate() + days)
-  return date.toISOString().slice(0, 10)
-}
-
-function getToday() {
-  return new Date().toISOString().slice(0, 10)
-}
 
 function getClientQueryOptions(clientId: string) {
   return {
@@ -238,7 +147,7 @@ export const Route = createFileRoute("/_layout/clients/$clientId")({
   head: () => ({
     meta: [
       {
-        title: "Client Detail - Meal CRM",
+        title: "Карточка клиента - Meal CRM",
       },
     ],
   }),
@@ -253,70 +162,203 @@ function ClientDetailPageContent() {
     [client.packages],
   )
 
+  const totalDebt = useMemo(
+    () => packagesWithDebt.reduce((sum, pkg) => sum + pkg.debt, 0),
+    [packagesWithDebt],
+  )
+
+  const activePackagesCount = useMemo(
+    () => client.packages.filter((pkg) => pkg.status === "active").length,
+    [client.packages],
+  )
+
+  const avatarStyle =
+    statusAvatarStyles[client.status] ?? statusAvatarStyles.new
+  const badgeStyle = statusBadgeStyles[client.status] ?? statusBadgeStyles.new
+  const dotColor = statusDotColors[client.status] ?? "bg-slate-400"
+
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight">
-                {client.name}
-              </h1>
-              <Badge
-                variant={clientStatusBadgeVariant[client.status]}
-                className="capitalize"
+      {/* Навигация назад */}
+      <div>
+        <Link
+          to="/clients"
+          className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group cursor-pointer"
+        >
+          <ArrowLeft className="mr-1.5 size-4 transition-transform group-hover:-translate-x-0.5" />
+          Назад к списку клиентов
+        </Link>
+      </div>
+
+      {/* Карточка профиля клиента */}
+      <Card className="shadow-xs overflow-hidden border">
+        <CardHeader className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between pb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            {/* Аватар с инициалами и статусной точкой */}
+            <div className="relative shrink-0">
+              <Avatar
+                className={cn(
+                  "size-16 border-2 text-base font-bold shadow-xs",
+                  avatarStyle.bg,
+                  avatarStyle.border,
+                )}
               >
-                {client.status}
-              </Badge>
+                <AvatarFallback
+                  className={cn(
+                    "bg-transparent font-bold text-lg",
+                    avatarStyle.text,
+                  )}
+                >
+                  {getInitials(client.name)}
+                </AvatarFallback>
+              </Avatar>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "absolute bottom-0 right-0 size-3.5 rounded-full ring-2 ring-background shadow-xs",
+                  dotColor,
+                )}
+              />
             </div>
-            <div className="text-muted-foreground flex flex-col gap-2 text-sm md:flex-row md:flex-wrap md:items-center md:gap-4">
-              <span className="inline-flex items-center gap-2">
-                <Phone className="size-4" />
-                {client.phone}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <MapPin className="size-4" />
-                {client.address || "No address provided"}
-              </span>
-              <span>{client.email || "No email provided"}</span>
+
+            {/* Имя и бейджи */}
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                  {client.name}
+                </h1>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "px-2.5 py-0.5 text-xs font-medium border shadow-2xs gap-1.5",
+                    badgeStyle.className,
+                  )}
+                >
+                  <span
+                    className={cn("size-1.5 rounded-full", dotColor)}
+                    aria-hidden="true"
+                  />
+                  {badgeStyle.label}
+                </Badge>
+                {totalDebt > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30 font-semibold gap-1 shadow-2xs tabular-nums"
+                  >
+                    <AlertTriangle className="size-3.5 text-rose-600 dark:text-rose-400" />
+                    <span>Долг: {currencyFormatter.format(totalDebt)}</span>
+                  </Badge>
+                )}
+              </div>
+
+              {/* Контакты клиента */}
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 pt-1 text-sm text-muted-foreground">
+                <a
+                  href={`tel:${client.phone}`}
+                  className="inline-flex items-center gap-1.5 font-medium text-foreground hover:text-primary hover:underline tabular-nums transition-colors"
+                >
+                  <Phone
+                    className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span>{client.phone}</span>
+                </a>
+                <span className="hidden sm:inline text-border">•</span>
+                <span
+                  className="inline-flex items-center gap-1.5"
+                  title={client.address || "Адрес не указан"}
+                >
+                  <MapPin
+                    className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span>{client.address || "Адрес не указан"}</span>
+                </span>
+                <span className="hidden sm:inline text-border">•</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Mail
+                    className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0"
+                    aria-hidden="true"
+                  />
+                  {client.email ? (
+                    <a
+                      href={`mailto:${client.email}`}
+                      className="hover:text-primary hover:underline transition-colors"
+                    >
+                      {client.email}
+                    </a>
+                  ) : (
+                    <span>Email не указан</span>
+                  )}
+                </span>
+              </div>
             </div>
           </div>
+
           <EditClientDialog client={client} />
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <InfoTile label="Created" value={formatDateTime(client.created_at)} />
-          <InfoTile label="Updated" value={formatDateTime(client.updated_at)} />
-          <InfoTile
-            label="Packages"
+
+        {/* Сетка быстрой статистики */}
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 border-t pt-5 bg-muted/20">
+          <StatTile
+            icon={<Package className="size-4 text-primary" />}
+            label="Всего пакетов"
             value={client.packages.length.toString()}
+            subvalue={
+              activePackagesCount > 0
+                ? `${activePackagesCount} активных`
+                : "Нет активных"
+            }
           />
-          <InfoTile
-            label="Outstanding debt"
-            value={currencyFormatter.format(
-              packagesWithDebt.reduce((sum, pkg) => sum + pkg.debt, 0),
-            )}
+          <StatTile
+            icon={<UtensilsCrossed className="size-4 text-emerald-600" />}
+            label="Активных рационов"
+            value={activePackagesCount.toString()}
           />
-          {client.notes ? (
-            <InfoTile label="Client notes" value={client.notes} />
-          ) : null}
-          {client.contact_extra ? (
-            <InfoTile label="Extra contact" value={client.contact_extra} />
-          ) : null}
+          <StatTile
+            icon={<CreditCard className="size-4 text-amber-600" />}
+            label="Текущий долг"
+            value={currencyFormatter.format(totalDebt)}
+            highlightValue={totalDebt > 0}
+            subvalue={
+              totalDebt > 0 ? "Требуется оплата" : "Задолженность отсутствует"
+            }
+          />
+          <StatTile
+            icon={<Calendar className="size-4 text-muted-foreground" />}
+            label="Клиент с"
+            value={formatDate(client.created_at)}
+            subvalue={`Обновлен: ${formatDate(client.updated_at)}`}
+          />
         </CardContent>
       </Card>
 
+      {/* Вкладки: Пакеты питания / Заметки менеджера */}
       <Tabs defaultValue="packages" className="gap-4">
-        <TabsList>
-          <TabsTrigger value="packages">Packages</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="packages" className="gap-2">
+            <span>Пакеты питания</span>
+            <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-semibold tabular-nums">
+              {client.packages.length}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="gap-2">
+            <span>Заметки</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums">
+              {client.client_notes.length}
+            </span>
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="packages" className="space-y-4">
+        {/* Вкладка: Пакеты питания */}
+        <TabsContent value="packages" className="space-y-4 pt-2">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Packages</h2>
+              <h2 className="text-xl font-semibold tracking-tight">
+                Пакеты питания
+              </h2>
               <p className="text-muted-foreground text-sm">
-                Manage subscriptions, payments, freezes, and extensions.
+                Управление рационами, доставками, заморозками и оплатами.
               </p>
             </div>
             <AddPackageDialog clientId={clientId} />
@@ -325,45 +367,60 @@ function ClientDetailPageContent() {
           {client.packages.length > 0 ? (
             <div className="space-y-4">
               {client.packages.map((pkg) => (
-                <PackageCard
-                  key={pkg.id}
-                  package={pkg}
-                />
+                <PackageCard key={pkg.id} package={pkg} />
               ))}
             </div>
           ) : (
-            <Card>
-              <CardContent className="text-muted-foreground py-8 text-center">
-                No packages yet. Add the first meal package to start tracking.
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground mb-3">
+                  <UtensilsCrossed className="size-6" />
+                </div>
+                <h3 className="text-base font-semibold text-foreground">
+                  У клиента пока нет пакетов
+                </h3>
+                <p className="text-muted-foreground mt-1 text-xs max-w-sm">
+                  Добавьте первый пакет питания (3X или 5X), используя кнопку выше, чтобы начать учет
+                  доставок и оплат.
+                </p>
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
-        <TabsContent value="notes" className="space-y-4">
+        {/* Вкладка: Заметки менеджера */}
+        <TabsContent value="notes" className="space-y-4 pt-2">
           <div>
-            <h2 className="text-xl font-semibold">Notes</h2>
+            <h2 className="text-xl font-semibold tracking-tight">
+              Заметки менеджера
+            </h2>
             <p className="text-muted-foreground text-sm">
-              Capture call outcomes, preferences, and operational updates.
+              Записи звонков, предпочтения и важные детали о клиенте.
             </p>
           </div>
+
           <AddNoteForm clientId={clientId} />
+
           <div className="space-y-3">
             {client.client_notes.length > 0 ? (
               client.client_notes.map((note) => (
-                <Card key={note.id}>
-                  <CardContent className="space-y-2 py-5">
-                    <p className="whitespace-pre-wrap">{note.text}</p>
-                    <p className="text-muted-foreground text-sm">
-                      {formatDateTime(note.created_at)}
+                <Card key={note.id} className="shadow-2xs">
+                  <CardContent className="space-y-2 py-4">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <NotebookPen className="size-3.5" />
+                      <span>{formatDateTime(note.created_at)}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm text-foreground">
+                      {note.text}
                     </p>
                   </CardContent>
                 </Card>
               ))
             ) : (
-              <Card>
-                <CardContent className="text-muted-foreground py-8 text-center">
-                  No notes yet. Add the first note for this client.
+              <Card className="border-dashed">
+                <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                  Заметок пока нет. Добавьте первую заметку об этом клиенте
+                  выше.
                 </CardContent>
               </Card>
             )}
@@ -377,1288 +434,53 @@ function ClientDetailPageContent() {
 function ClientDetailPage() {
   return (
     <Suspense
-      fallback={<div className="text-muted-foreground">Loading client…</div>}
+      fallback={
+        <div className="text-muted-foreground p-8 text-center">
+          Загрузка карточки клиента…
+        </div>
+      }
     >
       <ClientDetailPageContent />
     </Suspense>
   )
 }
 
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-muted/40 rounded-lg border p-4">
-      <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-        {label}
-      </p>
-      <p className="mt-2 whitespace-pre-wrap text-sm font-medium">{value}</p>
-    </div>
-  )
-}
-
-function EditClientDialog({
-  client,
+function StatTile({
+  icon,
+  label,
+  value,
+  subvalue,
+  highlightValue = false,
 }: {
-  client: {
-    id: string
-    name: string
-    phone: string
-    address?: string | null
-    email?: string | null
-    status: ClientStatus
-    notes?: string | null
-  }
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const form = useForm<ClientFormData>({
-    resolver: zodResolver(clientFormSchema),
-    mode: "onBlur",
-    defaultValues: {
-      name: client.name,
-      phone: client.phone,
-      address: client.address ?? "",
-      email: client.email ?? "",
-      status: client.status,
-      notes: client.notes ?? "",
-    },
-  })
-
-  useEffect(() => {
-    if (isOpen) {
-      form.reset({
-        name: client.name,
-        phone: client.phone,
-        address: client.address ?? "",
-        email: client.email ?? "",
-        status: client.status,
-        notes: client.notes ?? "",
-      })
-    }
-  }, [client, form, isOpen])
-
-  const mutation = useMutation({
-    mutationFn: (body: CrmClientUpdate) =>
-      ClientsService.updateClient({ body, path: { id: client.id } }),
-    onSuccess: () => {
-      showSuccessToast("Client updated successfully")
-      setIsOpen(false)
-    },
-    onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] })
-    },
-  })
-
-  const onSubmit = (data: ClientFormData) => {
-    mutation.mutate({
-      name: data.name.trim(),
-      phone: data.phone.trim(),
-      address: normalizeOptionalText(data.address),
-      email: normalizeOptionalText(data.email),
-      status: data.status,
-      notes: normalizeOptionalText(data.notes),
-    })
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">Edit Client</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Edit Client</DialogTitle>
-          <DialogDescription>
-            Update contact details, current status, and summary notes.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {CLIENT_STATUSES.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Address</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
-                  Cancel
-                </Button>
-              </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save Changes
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function AddPackageDialog({ clientId }: { clientId: string }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const form = useForm<PackageFormData>({
-    resolver: zodResolver(packageFormSchema),
-    mode: "onBlur",
-    defaultValues: {
-      meal_type: "3X",
-      total_days: 20,
-      start_date: getToday(),
-      price: 0,
-    },
-  })
-
-  const mutation = useMutation({
-    mutationFn: (body: CrmPackageCreate) =>
-      PackagesService.createPackage({ body }),
-    onSuccess: () => {
-      showSuccessToast("Package created successfully")
-      form.reset({
-        meal_type: "3X",
-        total_days: 20,
-        start_date: getToday(),
-        price: 0,
-      })
-      setIsOpen(false)
-    },
-    onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] })
-      queryClient.invalidateQueries({ queryKey: ["packages"] })
-    },
-  })
-
-  const onSubmit = (data: PackageFormData) => {
-    mutation.mutate({
-      client_id: clientId,
-      meal_type: data.meal_type,
-      total_days: data.total_days,
-      start_date: data.start_date,
-      price: data.price,
-    })
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" />
-          Add Package
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Package</DialogTitle>
-          <DialogDescription>
-            Create a meal package and start tracking package activity.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="meal_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Meal type</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select meal type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {PACKAGE_MEAL_TYPES.map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {value}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="total_days"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Total days</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={field.value}
-                        onChange={(event) =>
-                          field.onChange(event.target.valueAsNumber)
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Price</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={field.value}
-                        onChange={(event) =>
-                          field.onChange(event.target.valueAsNumber)
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="start_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Start date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
-                  Cancel
-                </Button>
-              </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save Package
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function PackageCard({
-  package: pkg,
-}: {
-  package: CrmPackageDetail
-}) {
-  const [isExpanded, setIsExpanded] = useState(false)
-
-  const effectiveDays = pkg.total_days + pkg.extension_days
-  const totalObligation = pkg.price + pkg.extension_added_price
-  return (
-    <Card>
-      <CardHeader className="gap-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <CardTitle className="text-lg">{pkg.meal_type} package</CardTitle>
-              <Badge
-                variant={packageStatusBadgeVariant[pkg.status]}
-                className="capitalize"
-              >
-                {pkg.status}
-              </Badge>
-              <Badge variant={pkg.debt > 0 ? "destructive" : "secondary"}>
-                Debt {currencyFormatter.format(pkg.debt)}
-              </Badge>
-            </div>
-            <div className="grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-4">
-              <SummaryLine
-                label="Total days"
-                value={pkg.total_days.toString()}
-              />
-              <SummaryLine
-                label="Effective days"
-                value={effectiveDays.toString()}
-              />
-              <SummaryLine label="Used" value={pkg.days_used.toString()} />
-              <SummaryLine
-                label="Remaining"
-                value={pkg.days_remaining.toString()}
-              />
-              <SummaryLine
-                label="Base price"
-                value={currencyFormatter.format(pkg.price)}
-              />
-              {pkg.extension_added_price > 0 ? (
-                <SummaryLine
-                  label="Extension price"
-                  value={currencyFormatter.format(pkg.extension_added_price)}
-                />
-              ) : null}
-              <SummaryLine
-                label="Total obligation"
-                value={currencyFormatter.format(totalObligation)}
-              />
-              <SummaryLine
-                label="Paid"
-                value={currencyFormatter.format(pkg.paid_amount)}
-              />
-              <SummaryLine
-                label="Freeze days"
-                value={pkg.freeze_days.toString()}
-              />
-              <SummaryLine
-                label="Extension days"
-                value={pkg.extension_days.toString()}
-              />
-              <SummaryLine label="Start" value={formatDate(pkg.start_date)} />
-              <SummaryLine label="End" value={formatDate(pkg.end_date)} />
-              <SummaryLine
-                label="Deliveries"
-                value={pkg.deliveries_count.toString()}
-              />
-              <SummaryLine
-                label="Computed debt"
-                value={currencyFormatter.format(pkg.debt)}
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <UpdatePackageStatusDialog
-              packageId={pkg.id}
-              currentStatus={pkg.status}
-            />
-            <Button
-              variant="outline"
-              onClick={() => setIsExpanded((value) => !value)}
-            >
-              {isExpanded ? "Hide Details" : "Show Details"}
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-
-      {isExpanded ? (
-        <CardContent className="grid gap-4 xl:grid-cols-2">
-          <SectionCard
-            title="Payments"
-            action={<AddPaymentDialog packageId={pkg.id} />}
-          >
-            {pkg.payments.length > 0 ? (
-              <div className="space-y-3">
-                {pkg.payments.map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="rounded-lg border p-3 text-sm"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-medium">
-                        {currencyFormatter.format(payment.amount)}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {formatDate(payment.date)}
-                      </span>
-                    </div>
-                    {payment.comment ? (
-                      <p className="text-muted-foreground mt-2 whitespace-pre-wrap">
-                        {payment.comment}
-                      </p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No payments recorded yet.
-              </p>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title="Deliveries"
-            action={<AddDeliveryDialog packageId={pkg.id} />}
-          >
-            {pkg.deliveries.length > 0 ? (
-              <div className="space-y-3">
-                {pkg.deliveries.map((delivery) => (
-                  <div
-                    key={delivery.id}
-                    className="rounded-lg border p-3 text-sm"
-                  >
-                    <div className="font-medium">
-                      Meal date: {formatDate(delivery.scheduled_date)}
-                    </div>
-                    <div className="text-muted-foreground mt-1">
-                      Send / package day: {formatDate(delivery.sent_date)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No deliveries recorded yet.
-              </p>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title="Freezes"
-            action={<AddFreezeDialog packageId={pkg.id} />}
-          >
-            {pkg.freezes.length > 0 ? (
-              <div className="space-y-3">
-                {pkg.freezes.map((freeze) => {
-                  const frozenDays =
-                    Math.floor(
-                      (new Date(freeze.end_date).getTime() -
-                        new Date(freeze.start_date).getTime()) /
-                        MS_PER_DAY,
-                    ) + 1
-
-                  return (
-                    <div
-                      key={freeze.id}
-                      className="rounded-lg border p-3 text-sm"
-                    >
-                      <div className="font-medium">
-                        {formatDate(freeze.start_date)} →{" "}
-                        {formatDate(freeze.end_date)}
-                      </div>
-                      <div className="text-muted-foreground mt-1">
-                        Frozen days: {frozenDays}
-                      </div>
-                      {freeze.reason ? (
-                        <div className="text-muted-foreground mt-1 whitespace-pre-wrap">
-                          {freeze.reason}
-                        </div>
-                      ) : null}
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No freeze entries recorded yet.
-              </p>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title="Extensions"
-            action={<AddExtensionDialog packageId={pkg.id} />}
-          >
-            {pkg.extensions.length > 0 ? (
-              <div className="space-y-3">
-                {pkg.extensions.map((extension) => (
-                  <div
-                    key={extension.id}
-                    className="rounded-lg border p-3 text-sm"
-                  >
-                    <div className="font-medium">
-                      +{extension.extra_days} days on{" "}
-                      {formatDate(extension.date)}
-                    </div>
-                    {extension.added_price > 0 ? (
-                      <div className="text-muted-foreground mt-1">
-                        Added price: {currencyFormatter.format(extension.added_price)}
-                      </div>
-                    ) : null}
-                    {extension.reason ? (
-                      <div className="text-muted-foreground mt-1 whitespace-pre-wrap">
-                        {extension.reason}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No extension entries recorded yet.
-              </p>
-            )}
-          </SectionCard>
-        </CardContent>
-      ) : null}
-    </Card>
-  )
-}
-
-function SummaryLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border px-3 py-2">
-      <p className="text-muted-foreground text-xs uppercase tracking-wide">
-        {label}
-      </p>
-      <p className="mt-1 font-medium">{value}</p>
-    </div>
-  )
-}
-
-function SectionCard({
-  title,
-  action,
-  children,
-}: {
-  title: string
-  action: ReactNode
-  children: ReactNode
+  icon: React.ReactNode
+  label: string
+  value: string
+  subvalue?: string
+  highlightValue?: boolean
 }) {
   return (
-    <div className="rounded-xl border p-4">
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h3 className="font-semibold">{title}</h3>
-        {action}
+    <div className="bg-card rounded-lg border p-3.5 shadow-2xs">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+          {label}
+        </p>
+        {icon}
       </div>
-      <div className="space-y-3">{children}</div>
+      <p
+        className={cn(
+          "mt-1 text-xl font-bold tracking-tight tabular-nums",
+          highlightValue
+            ? "text-rose-600 dark:text-rose-400"
+            : "text-foreground",
+        )}
+      >
+        {value}
+      </p>
+      {subvalue ? (
+        <p className="text-muted-foreground mt-0.5 text-xs truncate">
+          {subvalue}
+        </p>
+      ) : null}
     </div>
-  )
-}
-
-function AddPaymentDialog({ packageId }: { packageId: string }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const form = useForm<PaymentFormData>({
-    resolver: zodResolver(paymentFormSchema),
-    mode: "onBlur",
-    defaultValues: {
-      amount: 1,
-      date: getToday(),
-      comment: "",
-    },
-  })
-
-  const mutation = useMutation({
-    mutationFn: (data: PaymentFormData) =>
-      PaymentsService.createPayment({
-        body: {
-          package_id: packageId,
-          amount: data.amount,
-          date: data.date,
-          comment: normalizeOptionalText(data.comment),
-        },
-      }),
-    onSuccess: () => {
-      showSuccessToast("Payment created successfully")
-      form.reset({ amount: 1, date: getToday(), comment: "" })
-      setIsOpen(false)
-    },
-    onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["packages", "payments", packageId],
-      })
-      queryClient.invalidateQueries({ queryKey: ["clients"] })
-      queryClient.invalidateQueries({ queryKey: ["packages"] })
-    },
-  })
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <CreditCard className="size-4" />
-          Add Payment
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Payment</DialogTitle>
-          <DialogDescription>Record a package payment.</DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
-            className="space-y-4"
-          >
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={field.value}
-                      onChange={(event) =>
-                        field.onChange(event.target.valueAsNumber)
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="comment"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Comment</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
-                  Cancel
-                </Button>
-              </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save Payment
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function AddDeliveryDialog({
-  packageId,
-}: {
-  packageId: string
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const form = useForm<DeliveryFormData>({
-    resolver: zodResolver(deliveryFormSchema),
-    mode: "onBlur",
-    defaultValues: {
-      scheduled_date: getToday(),
-      sent_date: shiftDate(getToday(), -1),
-    },
-  })
-
-  const scheduledDate = form.watch("scheduled_date")
-
-  useEffect(() => {
-    if (scheduledDate) {
-      form.setValue("sent_date", shiftDate(scheduledDate, -1), {
-        shouldDirty: true,
-      })
-    }
-  }, [form, scheduledDate])
-
-  const mutation = useMutation({
-    mutationFn: (data: DeliveryFormData) =>
-      PackagesService.createDelivery({
-        body: {
-          scheduled_date: data.scheduled_date,
-          sent_date: data.sent_date,
-        },
-        path: { id: packageId },
-      }),
-    onSuccess: () => {
-      showSuccessToast("Delivery created successfully")
-      form.reset({
-        scheduled_date: getToday(),
-        sent_date: shiftDate(getToday(), -1),
-      })
-      setIsOpen(false)
-    },
-    onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] })
-      queryClient.invalidateQueries({ queryKey: ["packages"] })
-    },
-  })
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Package2 className="size-4" />
-          Add Delivery
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Delivery</DialogTitle>
-          <DialogDescription>
-            Track the meal date and the send / package day that consumes package allowance.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
-            className="space-y-4"
-          >
-            <FormField
-              control={form.control}
-              name="scheduled_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Meal date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="sent_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Send / package day</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
-                  Cancel
-                </Button>
-              </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save Delivery
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function AddFreezeDialog({
-  packageId,
-}: {
-  packageId: string
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const form = useForm<FreezeFormData>({
-    resolver: zodResolver(freezeFormSchema),
-    mode: "onBlur",
-    defaultValues: {
-      start_date: getToday(),
-      end_date: getToday(),
-      reason: "",
-    },
-  })
-
-  const mutation = useMutation({
-    mutationFn: (data: FreezeFormData) =>
-      PackagesService.createFreeze({
-        body: {
-          start_date: data.start_date,
-          end_date: data.end_date,
-          reason: normalizeOptionalText(data.reason),
-        },
-        path: { id: packageId },
-      }),
-    onSuccess: () => {
-      showSuccessToast("Freeze created successfully")
-      form.reset({ start_date: getToday(), end_date: getToday(), reason: "" })
-      setIsOpen(false)
-    },
-    onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] })
-      queryClient.invalidateQueries({ queryKey: ["packages"] })
-    },
-  })
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Clock3 className="size-4" />
-          Add Freeze
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Freeze</DialogTitle>
-          <DialogDescription>
-            Pause a package for a date range.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
-            className="space-y-4"
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="start_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="end_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="reason"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reason</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
-                  Cancel
-                </Button>
-              </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save Freeze
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function AddExtensionDialog({
-  packageId,
-}: {
-  packageId: string
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const form = useForm<ExtensionFormData>({
-    resolver: zodResolver(extensionFormSchema),
-    mode: "onBlur",
-    defaultValues: {
-      extra_days: 1,
-      added_price: 0,
-      date: getToday(),
-      reason: "",
-    },
-  })
-
-  const mutation = useMutation({
-    mutationFn: (data: ExtensionFormData) =>
-      PackagesService.createExtension({
-        body: {
-          extra_days: data.extra_days,
-          added_price: data.added_price,
-          date: data.date,
-          reason: normalizeOptionalText(data.reason),
-        },
-        path: { id: packageId },
-      }),
-    onSuccess: () => {
-      showSuccessToast("Extension created successfully")
-      form.reset({ extra_days: 1, added_price: 0, date: getToday(), reason: "" })
-      setIsOpen(false)
-    },
-    onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] })
-      queryClient.invalidateQueries({ queryKey: ["packages"] })
-    },
-  })
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Calendar className="size-4" />
-          Add Extension
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Extension</DialogTitle>
-          <DialogDescription>Add extra days and record any additional price to the package.</DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
-            className="space-y-4"
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="extra_days"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Extra days</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={field.value}
-                        onChange={(event) =>
-                          field.onChange(event.target.valueAsNumber)
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="added_price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Added price</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={field.value}
-                        onChange={(event) =>
-                          field.onChange(event.target.valueAsNumber)
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="reason"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reason</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
-                  Cancel
-                </Button>
-              </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save Extension
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function UpdatePackageStatusDialog({
-  packageId,
-  currentStatus,
-}: {
-  packageId: string
-  currentStatus: PackageStatus
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const form = useForm<PackageStatusFormData>({
-    resolver: zodResolver(packageStatusFormSchema),
-    defaultValues: {
-      status: currentStatus,
-    },
-  })
-
-  useEffect(() => {
-    if (isOpen) {
-      form.reset({ status: currentStatus })
-    }
-  }, [currentStatus, form, isOpen])
-
-  const mutation = useMutation({
-    mutationFn: (body: CrmPackageUpdate) =>
-      PackagesService.updatePackage({ body, path: { id: packageId } }),
-    onSuccess: () => {
-      showSuccessToast("Package status updated successfully")
-      setIsOpen(false)
-    },
-    onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] })
-      queryClient.invalidateQueries({ queryKey: ["packages"] })
-    },
-  })
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">Update Status</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Update Package Status</DialogTitle>
-          <DialogDescription>
-            Pause, resume, or complete this package.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) =>
-              mutation.mutate({ status: data.status }),
-            )}
-            className="space-y-4"
-          >
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {PACKAGE_STATUSES.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
-                  Cancel
-                </Button>
-              </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save Status
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function AddNoteForm({ clientId }: { clientId: string }) {
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const form = useForm<NoteFormData>({
-    resolver: zodResolver(noteFormSchema),
-    mode: "onBlur",
-    defaultValues: { text: "" },
-  })
-
-  const mutation = useMutation({
-    mutationFn: (body: CrmNoteCreate) =>
-      ClientsService.createClientNote({ body, path: { id: clientId } }),
-    onSuccess: () => {
-      showSuccessToast("Note created successfully")
-      form.reset({ text: "" })
-    },
-    onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] })
-    },
-  })
-
-  return (
-    <Card>
-      <CardContent className="py-6">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) =>
-              mutation.mutate({ text: data.text.trim() }),
-            )}
-            className="space-y-4"
-          >
-            <FormField
-              control={form.control}
-              name="text"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Add Note</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      placeholder="Write a note about this client"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <LoadingButton type="submit" loading={mutation.isPending}>
-              <NotebookPen className="size-4" />
-              Save Note
-            </LoadingButton>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
   )
 }
