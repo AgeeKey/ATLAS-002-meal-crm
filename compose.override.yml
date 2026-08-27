@@ -66,6 +66,7 @@ services:
       FASTAPI_ENV: "development"
       SMTP_HOST: "mailpit"
       SMTP_PORT: "1025"
+      DATABASE_URL: "${DATABASE_URL}"
       SMTP_TLS: "false"
 
   mailpit:
@@ -98,3 +99,5 @@ services:
       - ./frontend/test-results:/app/frontend/test-results
     ports:
       - 9323:9323
+
+
